@@ -1,7 +1,11 @@
 // src/api.js
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+// Always ensure trailing /api is present
+let API_BASE = import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+if (!API_BASE.endsWith("/api")) {
+  API_BASE = API_BASE + "/api";
+}
 
 const API = axios.create({
   baseURL: API_BASE,
@@ -9,16 +13,11 @@ const API = axios.create({
 });
 
 /* ---------------------------------------------------
-   🔐 FIXED TOKEN ATTACHMENT
-   IMPORTANT:
-   Your localStorage contains *raw* JWT only.
-   Example: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-   So we MUST attach:  Authorization: Bearer <token>
+   🔐 TOKEN ATTACHMENT (Raw JWT → Authorization: Bearer)
 --------------------------------------------------- */
 API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // RAW TOKEN
+  const token = localStorage.getItem("token");
   if (token) {
-    // Attach correctly — no double Bearer
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -36,7 +35,7 @@ API.interceptors.response.use(
 );
 
 /* ---------------------------------------------------
-   📌 API ROUTES (Matches backend 100%)
+   📌 API ROUTES (100% correct paths)
 --------------------------------------------------- */
 const api = {
   // --- AUTH ---
@@ -48,19 +47,10 @@ const api = {
   // --- USER ---
   getProfile: (id) => API.get(`/users/profile/${id}`),
 
-  // Used by AuthContext on page refresh
+  // Used by AuthContext on refresh
   getMe: () => API.get("/users/me"),
 
-  /* -----------------------------------------------
-     🖼 PROFILE PICTURE
-     Backend returns JSON:
-     {
-       data: [
-         { streamUrl: "/api/users/123/profile-picture" }
-       ]
-     }
-     So we do NOT request a blob.
-  --------------------------------------------------- */
+  // Profile picture JSON metadata
   getMyProfilePic: () => API.get("/users/profile-picture"),
 
   // --- ACCOUNT ---
