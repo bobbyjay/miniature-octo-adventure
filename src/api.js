@@ -7,9 +7,9 @@ const API = axios.create({
 });
 
 /* ---------------------------------------------------
-   🔐 FIXED TOKEN ATTACHMENT
-   Your token in localStorage = just the raw JWT
-   So we must ALWAYS prefix "Bearer " here.
+   🔐 TOKEN ATTACHMENT (Correct Version)
+   Your localStorage stores ONLY the raw JWT.
+   So we ALWAYS prepend "Bearer ".
 --------------------------------------------------- */
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -31,7 +31,7 @@ API.interceptors.response.use(
 );
 
 /* ---------------------------------------------------
-   📌 API ROUTES (Matches your backend 100%)
+   📌 API ROUTES
 --------------------------------------------------- */
 const api = {
   // --- AUTH ---
@@ -41,33 +41,20 @@ const api = {
   login: (data) => API.post("/auth/login", data),
 
   // --- USER ---
-  // Returns: { success, message, data:{id,email,username} }
   getProfile: (id) => API.get(`/users/profile/${id}`),
+
+  // 🔥 Required by AuthContext on refresh
+  getMe: () => API.get("/users/me"),
 
   /* -----------------------------------------------
      🖼 PROFILE PICTURE FIX
-     Your backend returns:
-     {
-       "success": true,
-       "message": "OK",
-       "data": [
-         {
-            "id": "...",
-            "username": "...",
-            "streamUrl": "/api/users/{id}/profile-picture"
-         }
-       ]
-     }
-
-     So this endpoint should be JSON, NOT blob.
+     Your backend returns JSON containing streamUrl.
+     So we do NOT use blob here.
   -------------------------------------------------*/
   getMyProfilePic: () => API.get("/users/profile-picture"),
 
   // --- ACCOUNT ---
-  // Returns: { success, message, data:{ balance } }
   getBalance: () => API.get("/account/balance"),
-
-  // Returns: { success, message, data:[...] }
   transactions: () => API.get("/account/transactions"),
 
   // --- NOTIFICATIONS ---
