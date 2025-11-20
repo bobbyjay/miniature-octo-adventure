@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
   const navigate = useNavigate();
+  const { register } = useAuth(); // Use AuthContext
 
   const [form, setForm] = useState({
     name: "",
@@ -13,28 +13,35 @@ export default function RegisterPage() {
   });
 
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setLoading(true);
     setError("");
+    setSuccess("");
+    setLoading(true);
 
-    const res = await register(form);
+    const result = await register(form);
 
-    if (!res.success) {
-      setError(res.error);
-      setLoading(false);
+    setLoading(false);
+
+    if (!result.success) {
+      setError(result.error);
       return;
     }
 
-    // Navigation handled inside AuthContext
-    setLoading(false);
+    setSuccess("Account created! Please verify your email...");
+    setTimeout(() => {
+      navigate("/verify-email");
+    }, 500);
   };
 
   return (
@@ -42,6 +49,7 @@ export default function RegisterPage() {
       <h1 style={styles.title}>Create Account</h1>
 
       {error && <p style={styles.error}>{error}</p>}
+      {success && <p style={styles.success}>{success}</p>}
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <input
@@ -80,7 +88,7 @@ export default function RegisterPage() {
       </form>
 
       <p style={styles.loginText}>
-        Already have an account?
+        Already have an account?{" "}
         <span onClick={() => navigate("/login")} style={styles.link}>
           Login
         </span>
@@ -88,3 +96,54 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+const styles = {
+  container: {
+    width: "100%",
+    maxWidth: "400px",
+    margin: "0 auto",
+    paddingTop: "60px",
+    textAlign: "center",
+  },
+  title: {
+    fontSize: "28px",
+    marginBottom: "20px",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "15px",
+  },
+  input: {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    fontSize: "16px",
+  },
+  button: {
+    padding: "12px",
+    borderRadius: "8px",
+    background: "#111",
+    color: "#fff",
+    fontSize: "17px",
+    cursor: "pointer",
+    border: "none",
+  },
+  error: {
+    color: "red",
+    marginBottom: "10px",
+  },
+  success: {
+    color: "green",
+    marginBottom: "10px",
+  },
+  loginText: {
+    marginTop: "15px",
+    fontSize: "14px",
+  },
+  link: {
+    color: "#007bff",
+    cursor: "pointer",
+    marginLeft: "5px",
+  },
+};
