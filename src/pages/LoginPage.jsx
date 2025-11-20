@@ -1,52 +1,131 @@
 // src/pages/LoginPage.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Link } from "react-router-dom";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const { login } = useAuth();
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
 
-  const submit = async (e) => {
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    const res = await login(form); // AuthContext handles navigation
+    const result = await login(form);
 
-    if (!res.success) {
-      setError(res.error);
+    setLoading(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
     }
+
+    navigate("/dashboard");
   };
 
   return (
-    <div className="auth-container">
-      <h2>Login</h2>
+    <div style={styles.container}>
+      <h1 style={styles.title}>Welcome Back</h1>
 
-      <form onSubmit={submit}>
+      {error && <p style={styles.error}>{error}</p>}
+
+      <form onSubmit={handleSubmit} style={styles.form}>
         <input
           type="email"
-          placeholder="Email"
+          name="email"
+          placeholder="Email Address"
           value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          onChange={handleChange}
+          style={styles.input}
+          required
         />
 
         <input
           type="password"
+          name="password"
           placeholder="Password"
           value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          onChange={handleChange}
+          style={styles.input}
+          required
         />
 
-        <button type="submit">Login</button>
+        <button type="submit" style={styles.button} disabled={loading}>
+          {loading ? "Signing in..." : "Login"}
+        </button>
       </form>
 
-      {error && <p className="error">{error}</p>}
-
-      <p>
-        Don’t have an account?
-        <Link to="/register"> Register here</Link>
+      <p style={styles.text}>
+        Don’t have an account?{" "}
+        <span style={styles.link} onClick={() => navigate("/signup")}>
+          Sign Up
+        </span>
       </p>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    width: "100%",
+    maxWidth: "400px",
+    margin: "0 auto",
+    paddingTop: "60px",
+    textAlign: "center",
+  },
+  title: {
+    fontSize: "30px",
+    marginBottom: "20px",
+    fontWeight: "600",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "15px",
+    marginTop: "10px",
+  },
+  input: {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    fontSize: "16px",
+  },
+  button: {
+    padding: "12px",
+    borderRadius: "8px",
+    background: "#111",
+    color: "#fff",
+    fontSize: "17px",
+    cursor: "pointer",
+    border: "none",
+  },
+  text: {
+    marginTop: "15px",
+    fontSize: "14px",
+  },
+  link: {
+    color: "#007bff",
+    cursor: "pointer",
+    marginLeft: "5px",
+  },
+  error: {
+    color: "red",
+    marginBottom: "10px",
+  },
+};
