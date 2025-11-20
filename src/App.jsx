@@ -1,82 +1,18 @@
-// src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
 
-import Navbar from "./components/Navbar";
-
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
-
-import DashboardPage from "./pages/DashboardPage";
-import BetsPage from "./pages/BetsPage";
-import ProfilePage from "./pages/ProfilePage";
-import WalletPage from "./pages/WalletPage";
-import SupportPage from "./pages/SupportPage";
-
-import ProtectedRoute from "./components/ProtectedRoute";
-
-function App() {
+export default function App() {
   return (
-    <>
-      <Navbar />
-
+    <BrowserRouter>
       <Routes>
-        {/* Redirect root → login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-
-        {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-
-        {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/bets"
-          element={
-            <ProtectedRoute>
-              <BetsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/wallet"
-          element={
-            <ProtectedRoute>
-              <WalletPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/support"
-          element={
-            <ProtectedRoute>
-              <SupportPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<Home />} />
+        <Route path="/signin" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
-    </>
+    </BrowserRouter>
   );
 }
-
-export default App;
