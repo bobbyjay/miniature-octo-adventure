@@ -14,13 +14,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* ---------------------------------------------------------
-     LOAD USER ON REFRESH
+     🟢 LOAD USER ON REFRESH (Fixed)
+     - Does NOT delete token unless backend explicitly says 401
+     - Prevents dashboard reset
   --------------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
-    async function load() {
+    async function loadUser() {
       const token = localStorage.getItem("token");
+
       if (!token) {
         if (mounted) setLoading(false);
         return;
@@ -29,22 +32,31 @@ export function AuthProvider({ children }) {
       try {
         const res = await api.getMe();
 
-        if (mounted) setUser(res.data.data);
+        if (mounted) {
+          setUser(res.data.data);
+        }
       } catch (err) {
-        console.warn("❌ Failed to load user — clearing token");
-        localStorage.removeItem("token");
-        if (mounted) setUser(null);
+        const code = err.response?.status;
+
+        // ❗ ONLY clear token if truly unauthorized
+        if (code === 401) {
+          console.warn("⚠️ Token expired — clearing");
+          localStorage.removeItem("token");
+          if (mounted) setUser(null);
+        } else {
+          console.warn("⚠️ Non-auth error but keeping token:", code);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    load();
+    loadUser();
     return () => (mounted = false);
   }, []);
 
   /* ---------------------------------------------------------
-     REGISTER USER
+     REGISTER
   --------------------------------------------------------- */
   const register = async ({ username, email, password }) => {
     try {
@@ -75,13 +87,14 @@ export function AuthProvider({ children }) {
       const data = res.data.data;
 
       if (data?.token) {
-        // 🔥 FIXED — store RAW token (NO Bearer)
+        // store raw token
         localStorage.setItem("token", data.token);
 
         setUser({
           id: data.id,
           username: data.username,
           email: data.email,
+          profilePicture: data.profilePicture || null, // ⭐ FIXED
         });
 
         navigate("/dashboard");
@@ -93,13 +106,13 @@ export function AuthProvider({ children }) {
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Invalid verification code",
+        error: err.response?.data?.message || "Invalid code",
       };
     }
   };
 
   /* ---------------------------------------------------------
-     LOGIN USER
+     LOGIN (Profile picture added)
   --------------------------------------------------------- */
   const login = async ({ email, password }) => {
     try {
@@ -110,13 +123,13 @@ export function AuthProvider({ children }) {
         throw new Error("No token returned by backend.");
       }
 
-      // 🔥 FIX — Store RAW JWT token
       localStorage.setItem("token", data.token);
 
       setUser({
         id: data.id,
         email: data.email,
         username: data.username,
+        profilePicture: data.profilePicture || null, // ⭐ FIXED
       });
 
       navigate("/dashboard");
