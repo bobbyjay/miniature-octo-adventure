@@ -13,7 +13,9 @@ export function AuthProvider({ children }) {
   const [pendingEmail, setPendingEmail] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // on mount, if token exists, validate with /users/me
+  // ---------------------------------------------------------
+  // LOAD USER ON REFRESH (/api/users/me)
+  // ---------------------------------------------------------
   useEffect(() => {
     let mounted = true;
 
@@ -25,12 +27,10 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        // api.getMe() calls /users/me
-        const res = await api.getMe();
-        // spec says GET /api/users/me returns profile — we'll assume res.data contains user object
-        if (mounted) setUser(res.data);
+        const res = await api.getMe(); // backend returns { success, data }
+        if (mounted) setUser(res.data.data); // 🎯 FIXED
       } catch (err) {
-        console.warn("Failed to load user; clearing token");
+        console.warn("❌ Failed to load user; clearing token");
         localStorage.removeItem("token");
         if (mounted) setUser(null);
       } finally {
@@ -39,17 +39,19 @@ export function AuthProvider({ children }) {
     }
 
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => (mounted = false);
   }, []);
 
-  // register expects { username, email, password }
+  // ---------------------------------------------------------
+  // REGISTER USER
+  // ---------------------------------------------------------
   const register = async ({ username, email, password }) => {
     try {
       await api.register({ username, email, password });
+
       setPendingEmail(email);
       navigate("/verify-email");
+
       return { success: true };
     } catch (err) {
       return {
@@ -59,27 +61,30 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // verify-email expects { email, code }
-  // backend unclear whether it returns token — handle both cases:
+  // ---------------------------------------------------------
+  // VERIFY EMAIL
+  // ---------------------------------------------------------
   const verifyEmail = async (code) => {
     try {
-      const res = await api.verifyEmail({ email: pendingEmail, code });
+      const res = await api.verifyEmail({
+        email: pendingEmail,
+        code,
+      });
 
-      // some backends return token/user here; spec didn't explicitly say but login returns token.
-      // handle both: if res.data.token exists, store and set user; otherwise navigate to login.
-      const payload = res.data || {};
+      // backend returns: { success, message, data: { id, email, username, token } }
+      const payload = res.data.data;
 
-      if (payload.token) {
-        // token might already include "Bearer " prefix
+      if (payload?.token) {
         localStorage.setItem("token", payload.token);
+
         setUser({
           id: payload.id,
           username: payload.username,
           email: payload.email,
         });
+
         navigate("/dashboard");
       } else {
-        // If verify endpoint doesn't return token, send user to login page
         navigate("/login");
       }
 
@@ -87,39 +92,56 @@ export function AuthProvider({ children }) {
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Verification failed",
+        error: err.response?.data?.message || "Invalid verification code",
       };
     }
   };
 
-  // login: backend returns { id, email, username, token }
+  // ---------------------------------------------------------
+  // LOGIN USER
+  // ---------------------------------------------------------
   const login = async ({ email, password }) => {
     try {
       const res = await api.login({ email, password });
-      const payload = res.data;
 
-      // backend returns token as "Bearer ..." per your spec — store exactly as provided
+      // RESPONSE FORMAT:
+      // {
+      //   success: true,
+      //   message: "OK",
+      //   data: { id, email, username, token }
+      // }
+
+      const payload = res.data.data; // 🎯 FIXED path
+
       if (!payload?.token) {
-        throw new Error("No token in login response");
+        throw new Error("No token returned by backend.");
       }
 
       localStorage.setItem("token", payload.token);
+
       setUser({
         id: payload.id,
-        username: payload.username,
         email: payload.email,
+        username: payload.username,
       });
 
       navigate("/dashboard");
+
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || err.message || "Login failed",
+        error:
+          err.response?.data?.message ||
+          err.message ||
+          "Login failed",
       };
     }
   };
 
+  // ---------------------------------------------------------
+  // LOGOUT
+  // ---------------------------------------------------------
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -132,9 +154,9 @@ export function AuthProvider({ children }) {
         user,
         pendingEmail,
         loading,
-        login,
         register,
         verifyEmail,
+        login,
         logout,
         isAuthenticated: !!user,
       }}
