@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function RegisterPage() {
+  const { register } = useAuth();
   const navigate = useNavigate();
-  const { register } = useAuth(); // Use AuthContext
 
   const [form, setForm] = useState({
     name: "",
@@ -13,7 +13,6 @@ export default function RegisterPage() {
   });
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -25,23 +24,20 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError("");
-    setSuccess("");
     setLoading(true);
 
-    const result = await register(form);
+    const res = await register(form);
 
     setLoading(false);
 
-    if (!result.success) {
-      setError(result.error);
+    if (!res.success) {
+      setError(res.error);
       return;
     }
 
-    setSuccess("Account created! Please verify your email...");
-    setTimeout(() => {
-      navigate("/verify-email");
-    }, 500);
+    // Redirect done inside AuthContext (navigate to /verify-email)
   };
 
   return (
@@ -49,7 +45,6 @@ export default function RegisterPage() {
       <h1 style={styles.title}>Create Account</h1>
 
       {error && <p style={styles.error}>{error}</p>}
-      {success && <p style={styles.success}>{success}</p>}
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <input
@@ -105,15 +100,8 @@ const styles = {
     paddingTop: "60px",
     textAlign: "center",
   },
-  title: {
-    fontSize: "28px",
-    marginBottom: "20px",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
+  title: { fontSize: "28px", marginBottom: "20px" },
+  form: { display: "flex", flexDirection: "column", gap: "15px" },
   input: {
     padding: "12px",
     borderRadius: "8px",
@@ -127,23 +115,8 @@ const styles = {
     color: "#fff",
     fontSize: "17px",
     cursor: "pointer",
-    border: "none",
   },
-  error: {
-    color: "red",
-    marginBottom: "10px",
-  },
-  success: {
-    color: "green",
-    marginBottom: "10px",
-  },
-  loginText: {
-    marginTop: "15px",
-    fontSize: "14px",
-  },
-  link: {
-    color: "#007bff",
-    cursor: "pointer",
-    marginLeft: "5px",
-  },
+  error: { color: "red", marginBottom: "10px" },
+  loginText: { marginTop: "15px" },
+  link: { color: "#007bff", cursor: "pointer" },
 };
