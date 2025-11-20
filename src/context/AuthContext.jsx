@@ -14,9 +14,28 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* ---------------------------------------------------------
-     🟢 LOAD USER ON REFRESH (Fixed)
-     - Only clears token for true auth errors (401)
-     - Keeps token for 404, 500, timeout, etc.
+     🔵 Helper: Load profile picture blob → URL
+  --------------------------------------------------------- */
+  const loadProfilePicture = async (userId) => {
+    try {
+      if (!userId) return;
+
+      const res = await api.getProfilePicture(userId, { responseType: "blob" });
+
+      const imageUrl = URL.createObjectURL(res.data);
+
+      setUser((prev) =>
+        prev
+          ? { ...prev, profilePictureUrl: imageUrl }
+          : prev
+      );
+    } catch (err) {
+      console.warn("Profile picture not found or failed to load");
+    }
+  };
+
+  /* ---------------------------------------------------------
+     🟢 LOAD USER ON REFRESH
   --------------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
@@ -33,7 +52,13 @@ export function AuthProvider({ children }) {
         const res = await api.getMe();
 
         if (mounted) {
-          setUser(res.data?.data || null);
+          const freshUser = res.data?.data || null;
+          setUser(freshUser);
+
+          // ⬅️ Load profile picture automatically
+          if (freshUser?._id || freshUser?.id) {
+            await loadProfilePicture(freshUser._id || freshUser.id);
+          }
         }
       } catch (err) {
         const code = err.response?.status;
@@ -86,12 +111,17 @@ export function AuthProvider({ children }) {
       if (data?.token) {
         localStorage.setItem("token", data.token);
 
-        setUser({
+        const newUser = {
           id: data.id,
           username: data.username,
           email: data.email,
           profilePicture: data.profilePicture || null,
-        });
+        };
+
+        setUser(newUser);
+
+        // Load image after verifying
+        await loadProfilePicture(data.id);
 
         navigate("/dashboard");
       } else {
@@ -108,7 +138,7 @@ export function AuthProvider({ children }) {
   };
 
   /* ---------------------------------------------------------
-     LOGIN — now supports profile picture
+     LOGIN — now loads profile picture
   --------------------------------------------------------- */
   const login = async ({ email, password }) => {
     try {
@@ -121,12 +151,17 @@ export function AuthProvider({ children }) {
 
       localStorage.setItem("token", data.token);
 
-      setUser({
+      const loggedInUser = {
         id: data.id,
         email: data.email,
         username: data.username,
         profilePicture: data.profilePicture || null,
-      });
+      };
+
+      setUser(loggedInUser);
+
+      // ⬅️ Load profile picture immediately after login
+      await loadProfilePicture(data.id);
 
       navigate("/dashboard");
       return { success: true };
