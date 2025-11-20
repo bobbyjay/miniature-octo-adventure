@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../utils/api"; // <-- IMPORTANT (you were not calling api.login)
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -27,16 +28,41 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await login(form);
+    try {
+      // 🔥 Call real backend login API
+      const res = await api.login(form);
 
-    setLoading(false);
+      if (!res.data?.success) {
+        setLoading(false);
+        setError(res.data?.message || "Login failed");
+        return;
+      }
 
-    if (!result.success) {
-      setError(result.error);
-      return;
+      const user = res.data.data;
+
+      // 🔥 Save token correctly
+      localStorage.setItem("token", `Bearer ${user.token}`);
+
+      // 🔥 Save user info for Dashboard
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("username", user.username);
+      localStorage.setItem("email", user.email);
+
+      // 🔥 Update AuthContext (your existing setup)
+      login({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      });
+
+      setLoading(false);
+      navigate("/dashboard");
+
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Invalid email or password");
+      setLoading(false);
     }
-
-    navigate("/dashboard");
   };
 
   return (
