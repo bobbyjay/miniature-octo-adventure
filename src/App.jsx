@@ -1,25 +1,32 @@
-import { Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Home from "./pages/HomePage";
 import Login from "./pages/LoginPage";
 import Signup from "./pages/RegisterPage";
 import Dashboard from "./pages/DashboardPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
+    <BrowserRouter>
+      <Routes>
+        {/* Home */}
+        <Route path="/" element={<Home />} />
 
-      {/* Login */}
-      <Route path="/signin" element={<Login />} />
-      <Route path="/login" element={<Login />} />
+        {/* Login */}
+        <Route path="/signin" element={<Login />} />
+        <Route path="/login" element={<Login />} />
 
-      {/* Signup / Register */}
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/register" element={<Signup />} />
+        {/* Signup / Register */}
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/register" element={<Signup />} />
 
-      {/* Dashboard */}
-      <Route path="/dashboard" element={<Dashboard />} />
-    </Routes>
+        {/* Email Verification */}
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+        {/* Dashboard */}
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
