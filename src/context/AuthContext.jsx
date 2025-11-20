@@ -13,9 +13,9 @@ export function AuthProvider({ children }) {
   const [pendingEmail, setPendingEmail] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ---------------------------------------------------------
-  // LOAD USER ON PAGE REFRESH
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     LOAD USER ON REFRESH
+  --------------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
@@ -27,10 +27,11 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const res = await api.getProfile("me"); // 🔥 FIXED — use correct API endpoint
+        const res = await api.getMe();
+
         if (mounted) setUser(res.data.data);
       } catch (err) {
-        console.warn("❌ Failed to load user; clearing token");
+        console.warn("❌ Failed to load user — clearing token");
         localStorage.removeItem("token");
         if (mounted) setUser(null);
       } finally {
@@ -42,9 +43,9 @@ export function AuthProvider({ children }) {
     return () => (mounted = false);
   }, []);
 
-  // ---------------------------------------------------------
-  // REGISTER USER
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     REGISTER USER
+  --------------------------------------------------------- */
   const register = async ({ username, email, password }) => {
     try {
       await api.register({ username, email, password });
@@ -61,9 +62,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ---------------------------------------------------------
-  // VERIFY EMAIL
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     VERIFY EMAIL
+  --------------------------------------------------------- */
   const verifyEmail = async (code) => {
     try {
       const res = await api.verifyEmail({
@@ -71,16 +72,16 @@ export function AuthProvider({ children }) {
         code,
       });
 
-      const payload = res.data.data;
+      const data = res.data.data;
 
-      if (payload?.token) {
-        // Store token with Bearer
-        localStorage.setItem("token", `Bearer ${payload.token}`);
+      if (data?.token) {
+        // 🔥 FIXED — store RAW token (NO Bearer)
+        localStorage.setItem("token", data.token);
 
         setUser({
-          id: payload.id,
-          username: payload.username,
-          email: payload.email,
+          id: data.id,
+          username: data.username,
+          email: data.email,
         });
 
         navigate("/dashboard");
@@ -97,31 +98,28 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ---------------------------------------------------------
-  // LOGIN
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     LOGIN USER
+  --------------------------------------------------------- */
   const login = async ({ email, password }) => {
     try {
       const res = await api.login({ email, password });
-      const payload = res.data.data;
+      const data = res.data.data;
 
-      if (!payload?.token) {
-        throw new Error("No token returned by server.");
+      if (!data?.token) {
+        throw new Error("No token returned by backend.");
       }
 
-      // Store token
-      localStorage.setItem("token", `Bearer ${payload.token}`);
+      // 🔥 FIX — Store RAW JWT token
+      localStorage.setItem("token", data.token);
 
-      // Store user info
       setUser({
-        id: payload.id,
-        email: payload.email,
-        username: payload.username,
+        id: data.id,
+        email: data.email,
+        username: data.username,
       });
 
-      // Redirect
       navigate("/dashboard");
-
       return { success: true };
     } catch (err) {
       return {
@@ -134,9 +132,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ---------------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     LOGOUT
+  --------------------------------------------------------- */
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
