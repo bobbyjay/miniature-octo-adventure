@@ -23,8 +23,8 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const res = await api.getMe();
-        setUser(res.data.user);
+        const res = await api.getMe(); // FIXED ROUTE
+        setUser(res.data);
       } catch {
         localStorage.removeItem("token");
         setUser(null);
@@ -36,10 +36,16 @@ export function AuthProvider({ children }) {
     loadUser();
   }, []);
 
-  // REGISTER
+  /* -------------------------
+        REGISTER
+  --------------------------*/
   const register = async (formData) => {
     try {
-      await api.register(formData);
+      await api.register({
+        username: formData.username,   // backend requires "username"
+        email: formData.email,
+        password: formData.password,
+      });
 
       setPendingEmail(formData.email);
       navigate("/verify-email");
@@ -48,12 +54,14 @@ export function AuthProvider({ children }) {
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Registration failed"
+        error: err.response?.data?.message || "Registration failed",
       };
     }
   };
 
-  // VERIFY EMAIL
+  /* -------------------------
+        VERIFY EMAIL
+  --------------------------*/
   const verifyEmail = async (code) => {
     try {
       const res = await api.verifyEmail({
@@ -62,7 +70,12 @@ export function AuthProvider({ children }) {
       });
 
       localStorage.setItem("token", res.data.token);
-      setUser(res.data.user);
+
+      setUser({
+        id: res.data.id,
+        username: res.data.username,
+        email: res.data.email,
+      });
 
       navigate("/dashboard");
 
@@ -75,24 +88,37 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // LOGIN
+  /* -------------------------
+          LOGIN
+  --------------------------*/
   const login = async (formData) => {
     try {
-      const res = await api.login(formData);
+      const res = await api.login({
+        email: formData.email,
+        password: formData.password,
+      });
 
       localStorage.setItem("token", res.data.token);
-      setUser(res.data.user);
+
+      setUser({
+        id: res.data.id,
+        username: res.data.username,
+        email: res.data.email,
+      });
 
       navigate("/dashboard");
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Login failed"
+        error: err.response?.data?.message || "Login failed",
       };
     }
   };
 
+  /* -------------------------
+          LOGOUT
+  --------------------------*/
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
