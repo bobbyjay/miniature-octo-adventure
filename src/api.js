@@ -9,7 +9,7 @@ const API = axios.create({
 // Attach token
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = token; // token ALREADY includes "Bearer "
+  if (token) config.headers.Authorization = token; // token ALREADY contains "Bearer "
   return config;
 });
 
@@ -23,22 +23,23 @@ API.interceptors.response.use(
 );
 
 const api = {
-  // AUTH
+  // --- AUTH ---
   register: (data) => API.post("/auth/register", data),
   verifyEmail: (data) => API.post("/auth/verify-email", data),
   resendCode: (data) => API.post("/auth/resend-code", data),
   login: (data) => API.post("/auth/login", data),
 
-  // USER
+  // --- USER ---
   getProfile: (id) => API.get(`/users/profile/${id}`),
-  getMyProfilePic: () =>
-    API.get("/users/profile-picture", { responseType: "blob" }),
 
-  // ACCOUNT
+  // ❗ FIXED: backend RETURNS a JSON, NOT a blob
+  getMyProfilePic: () => API.get("/users/profile-picture"),
+
+  // --- ACCOUNT ---
   getBalance: () => API.get("/account/balance"),
   transactions: () => API.get("/account/transactions"),
 
-  // NOTIFICATIONS
+  // --- NOTIFICATIONS ---
   getNotifications: () => API.get("/notifications"),
 };
 
