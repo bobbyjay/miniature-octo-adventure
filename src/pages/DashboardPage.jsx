@@ -32,7 +32,6 @@ export default function DashboardPage() {
       try {
         setLoading(true);
 
-        // 🟩 Ensure userId exists
         const userId = user?.id || localStorage.getItem("userId");
         if (!userId) {
           setError("User ID missing. Please login again.");
@@ -40,91 +39,65 @@ export default function DashboardPage() {
           return;
         }
 
-        // 🟩 Fetch all dashboard data together
-        const [
-          profileRes,
-          picRes,
-          balanceRes,
-          txRes,
-          notifRes,
-        ] = await Promise.allSettled([
-          api.getProfile(userId),
-          api.getMyProfilePic(),
-          api.getBalance(),
-          api.transactions(),
-          api.getNotifications(),
-        ]);
+        // Fetch all dashboard data at once
+        const [profileRes, picRes, balanceRes, txRes, notifRes] =
+          await Promise.allSettled([
+            api.getProfile(userId),
+            api.getMyProfilePic(),
+            api.getBalance(),
+            api.transactions(),
+            api.getNotifications(),
+          ]);
 
-        /* ---------------------------------------------------------
+        /* ---------------------------------------
            USER PROFILE
-        --------------------------------------------------------- */
+        --------------------------------------- */
         if (profileRes.status === "fulfilled") {
-          const p = profileRes.value.data?.data;
-          setProfile(p || null);
-
-          // Persist userId
+          const p = profileRes.value.data?.data || null;
+          setProfile(p);
           if (p?.id) localStorage.setItem("userId", p.id);
-        } else {
-          console.warn("Profile failed:", profileRes.reason);
         }
 
-        /* ---------------------------------------------------------
-           PROFILE PICTURE — convert URL to absolute
-        --------------------------------------------------------- */
+        /* ---------------------------------------
+           PROFILE PICTURE (Fix absolute URL)
+        --------------------------------------- */
         if (picRes.status === "fulfilled") {
-          const arr = picRes.value.data?.data;
+          const list = picRes.value.data?.data;
 
-          if (Array.isArray(arr) && arr.length > 0) {
-            let streamUrl = arr[0].streamUrl || "";
+          if (Array.isArray(list) && list.length > 0) {
+            let url = list[0].streamUrl;
 
-            // Convert relative → absolute URL
-            if (streamUrl.startsWith("/")) {
-              streamUrl = API_BASE + streamUrl;
-            } else {
-              streamUrl = `${API_BASE}/${streamUrl}`;
-            }
+            // Ensure URL is absolute
+            if (url.startsWith("/")) url = API_BASE + url;
 
-            setProfilePicUrl(streamUrl);
+            setProfilePicUrl(url);
           }
-        } else {
-          console.warn("Profile picture failed:", picRes.reason);
         }
 
-        /* ---------------------------------------------------------
+        /* ---------------------------------------
            BALANCE
-        --------------------------------------------------------- */
+        --------------------------------------- */
         if (balanceRes.status === "fulfilled") {
           setBalance(balanceRes.value.data?.data?.balance || 0);
         }
 
-        /* ---------------------------------------------------------
-           TRANSACTIONS — FIXED
-           Backend returns:
-           {
-             data: [ ...transactions ]
-           }
-        --------------------------------------------------------- */
+        /* ---------------------------------------
+           TRANSACTIONS (Corrected)
+        --------------------------------------- */
         if (txRes.status === "fulfilled") {
-          const list = txRes.value.data?.data;
+          const data = txRes.value.data?.data;
 
-          if (Array.isArray(list)) {
-            setTransactions(list);
-          } else {
-            setTransactions([]);
-          }
-        } else {
-          console.warn("Transactions failed:", txRes.reason);
+          // backend returns array → ensure always array
+          setTransactions(Array.isArray(data) ? data : []);
         }
 
-        /* ---------------------------------------------------------
+        /* ---------------------------------------
            NOTIFICATIONS
-        --------------------------------------------------------- */
+        --------------------------------------- */
         if (notifRes.status === "fulfilled") {
-          const list = notifRes.value.data?.data;
-
-          setNotifications(Array.isArray(list) ? list : []);
+          const data = notifRes.value.data?.data;
+          setNotifications(Array.isArray(data) ? data : []);
         }
-
       } catch (err) {
         console.error("Dashboard error:", err);
         setError("Failed to load dashboard.");
@@ -136,16 +109,18 @@ export default function DashboardPage() {
     load();
   }, [authLoading, isAuthenticated]);
 
-  /* ---------------------------------------------------------
-     RENDER UI
-  --------------------------------------------------------- */
+  /* ---------------------------------------
+     UI
+  --------------------------------------- */
   if (loading) return <div>Loading dashboard...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
   return (
     <div style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}>
+
       {/* HEADER */}
       <header style={{ display: "flex", gap: 16, alignItems: "center" }}>
+
         {/* PROFILE PICTURE */}
         <img
           src={profilePicUrl || "/default-avatar.png"}
@@ -174,6 +149,7 @@ export default function DashboardPage() {
       {/* TRANSACTIONS */}
       <section style={{ marginTop: 30 }}>
         <h2>Transaction History</h2>
+
         {transactions.length === 0 ? (
           <p>No transactions yet.</p>
         ) : (
@@ -190,6 +166,7 @@ export default function DashboardPage() {
       {/* NOTIFICATIONS */}
       <section style={{ marginTop: 30 }}>
         <h2>Notifications</h2>
+
         {notifications.length === 0 ? (
           <p>No notifications</p>
         ) : (
