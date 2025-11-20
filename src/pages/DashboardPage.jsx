@@ -6,6 +6,8 @@ import api from "../api";
 export default function DashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
 
+  const API_BASE = import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -29,8 +31,8 @@ export default function DashboardPage() {
       try {
         setLoading(true);
 
+        // 🔥 Make sure userId always exists
         const userId = user?.id || localStorage.getItem("userId");
-
         if (!userId) {
           setError("User ID missing. Please login again.");
           setLoading(false);
@@ -51,38 +53,59 @@ export default function DashboardPage() {
           api.getNotifications(),
         ]);
 
-        // PROFILE
+        /* ---------------------------------------------------------
+           USER PROFILE
+        --------------------------------------------------------- */
         if (profileRes.status === "fulfilled") {
-          setProfile(profileRes.value.data.data || null);
+          const p = profileRes.value.data?.data;
+          setProfile(p || null);
+          localStorage.setItem("userId", p?.id); // ensure persistence
         } else {
           console.warn("Profile failed:", profileRes.reason);
         }
 
-        // PROFILE PICTURE (using streamUrl — NOT blob)
+        /* ---------------------------------------------------------
+           PROFILE PICTURE (must convert relative → absolute URL)
+        --------------------------------------------------------- */
         if (picRes.status === "fulfilled") {
-          const arr = picRes.value.data.data;
+          const arr = picRes.value.data?.data;
+
           if (Array.isArray(arr) && arr.length > 0) {
-            const url = arr[0].streamUrl;
-            setProfilePicUrl(url.startsWith("/") ? url : `/${url}`);
+            let streamUrl = arr[0].streamUrl || "";
+
+            // build full URL
+            if (streamUrl.startsWith("/")) {
+              streamUrl = API_BASE + streamUrl; // ➜ https://domain/api/users/id/profile-picture
+            } else {
+              streamUrl = `${API_BASE}/${streamUrl}`;
+            }
+
+            setProfilePicUrl(streamUrl);
           }
         } else {
           console.warn("Profile picture failed:", picRes.reason);
         }
 
-        // BALANCE
+        /* ---------------------------------------------------------
+           BALANCE
+        --------------------------------------------------------- */
         if (balanceRes.status === "fulfilled") {
-          setBalance(balanceRes.value.data.data?.balance || 0);
+          setBalance(balanceRes.value.data?.data?.balance || 0);
         }
 
-        // TRANSACTIONS
+        /* ---------------------------------------------------------
+           TRANSACTIONS
+        --------------------------------------------------------- */
         if (txRes.status === "fulfilled") {
-          const list = txRes.value.data.data;
+          const list = txRes.value.data?.data;
           setTransactions(Array.isArray(list) ? list : []);
         }
 
-        // NOTIFICATIONS
+        /* ---------------------------------------------------------
+           NOTIFICATIONS
+        --------------------------------------------------------- */
         if (notifRes.status === "fulfilled") {
-          const list = notifRes.value.data.data;
+          const list = notifRes.value.data?.data;
           setNotifications(Array.isArray(list) ? list : []);
         }
 
@@ -97,6 +120,9 @@ export default function DashboardPage() {
     load();
   }, [authLoading, isAuthenticated]);
 
+  /* ---------------------------------------------------------
+     RENDER UI
+  --------------------------------------------------------- */
   if (loading) return <div>Loading dashboard...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
@@ -105,6 +131,8 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <header style={{ display: "flex", gap: 16, alignItems: "center" }}>
+
+        {/* PROFILE PICTURE */}
         <img
           src={profilePicUrl || "/default-avatar.png"}
           style={{
@@ -117,11 +145,13 @@ export default function DashboardPage() {
           alt="Avatar"
         />
 
+        {/* USER INFO */}
         <div>
           <h1 style={{ margin: 0 }}>{profile?.username}</h1>
           <div>{profile?.email}</div>
         </div>
 
+        {/* BALANCE */}
         <div style={{ marginLeft: "auto", fontSize: 20 }}>
           Balance: ₦{balance.toLocaleString()}
         </div>
