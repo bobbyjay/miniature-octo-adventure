@@ -1,19 +1,24 @@
 // src/api.js
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api",
+  baseURL: API_BASE,
   timeout: 15000,
 });
 
 /* ---------------------------------------------------
-   🔐 TOKEN ATTACHMENT (Correct Version)
-   Your localStorage stores ONLY the raw JWT.
-   So we ALWAYS prepend "Bearer ".
+   🔐 FIXED TOKEN ATTACHMENT
+   IMPORTANT:
+   Your localStorage contains *raw* JWT only.
+   Example: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+   So we MUST attach:  Authorization: Bearer <token>
 --------------------------------------------------- */
 API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token"); // RAW TOKEN
   if (token) {
+    // Attach correctly — no double Bearer
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -31,7 +36,7 @@ API.interceptors.response.use(
 );
 
 /* ---------------------------------------------------
-   📌 API ROUTES
+   📌 API ROUTES (Matches backend 100%)
 --------------------------------------------------- */
 const api = {
   // --- AUTH ---
@@ -43,14 +48,19 @@ const api = {
   // --- USER ---
   getProfile: (id) => API.get(`/users/profile/${id}`),
 
-  // 🔥 Required by AuthContext on refresh
+  // Used by AuthContext on page refresh
   getMe: () => API.get("/users/me"),
 
   /* -----------------------------------------------
-     🖼 PROFILE PICTURE FIX
-     Your backend returns JSON containing streamUrl.
-     So we do NOT use blob here.
-  -------------------------------------------------*/
+     🖼 PROFILE PICTURE
+     Backend returns JSON:
+     {
+       data: [
+         { streamUrl: "/api/users/123/profile-picture" }
+       ]
+     }
+     So we do NOT request a blob.
+  --------------------------------------------------- */
   getMyProfilePic: () => API.get("/users/profile-picture"),
 
   // --- ACCOUNT ---
