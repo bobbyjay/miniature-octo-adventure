@@ -1,12 +1,26 @@
 import { Link } from "react-router-dom";
 
 export default function Navbar() {
+  const token = localStorage.getItem("token");
+
   return (
-    <nav style={{ padding: 20, background: "#222", color: "#fff" }}>
-      <Link to="/" style={{ marginRight: 20, color: "#fff" }}>Home</Link>
-      <Link to="/wallet" style={{ marginRight: 20, color: "#fff" }}>Wallet</Link>
-      <Link to="/profile" style={{ marginRight: 20, color: "#fff" }}>Profile</Link>
-      <Link to="/support" style={{ color: "#fff" }}>Support</Link>
+    <nav className="nav">
+      <h2 className="logo">YourApp</h2>
+
+      <div className="links">
+        <Link to="/">Discover</Link>
+        <Link to="/help">Help Centre</Link>
+        <Link to="/communities">Communities</Link>
+
+        {!token ? (
+          <>
+            <Link to="/signin">Sign In</Link>
+            <Link to="/signup" className="btn">Sign Up</Link>
+          </>
+        ) : (
+          <Link to="/dashboard" className="btn">Dashboard</Link>
+        )}
+      </div>
     </nav>
   );
 }
