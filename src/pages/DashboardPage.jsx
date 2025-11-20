@@ -21,98 +21,90 @@ export default function DashboardPage() {
     if (authLoading) return;
 
     if (!isAuthenticated) {
-      setError("You must be logged in to view this page.");
+      setError("Please login to continue.");
       setLoading(false);
       return;
     }
 
-    async function loadDashboard() {
+    async function load() {
       try {
         setLoading(true);
-        setError("");
 
-        const userId = localStorage.getItem("userId") || user?.id;
+        const userId = user?.id || localStorage.getItem("userId");
 
         if (!userId) {
-          setError("No user ID found. Please login again.");
+          setError("User ID missing. Please login again.");
           setLoading(false);
           return;
         }
 
-        // ---- PARALLEL REQUESTS ----
         const [
           profileRes,
+          picRes,
           balanceRes,
           txRes,
           notifRes,
-          profilePicRes,
         ] = await Promise.allSettled([
-          api.getMe(), // /users/profile/:id
-          api.getBalance(), // /account/balance
-          api.transactions(), // /account/transactions
-          api.getNotifications(), // safe fallback included
-          api.getMyProfilePic(), // /users/profile-picture
+          api.getProfile(userId),
+          api.getMyProfilePic(),
+          api.getBalance(),
+          api.transactions(),
+          api.getNotifications(),
         ]);
 
-        // ---- PROFILE ----
+        // PROFILE
         if (profileRes.status === "fulfilled") {
           setProfile(profileRes.value.data);
         } else {
-          console.warn("Profile load failed:", profileRes.reason);
+          console.warn("Profile failed:", profileRes.reason);
         }
 
-        // ---- BALANCE ----
+        // PROFILE PICTURE (blob)
+        if (picRes.status === "fulfilled") {
+          const blobUrl = URL.createObjectURL(picRes.value.data);
+          setProfilePicUrl(blobUrl);
+        } else {
+          console.warn("Profile picture failed:", picRes.reason);
+        }
+
+        // BALANCE
         if (balanceRes.status === "fulfilled") {
           setBalance(balanceRes.value.data.balance || 0);
-        } else {
-          console.warn("Balance failed:", balanceRes.reason);
         }
 
-        // ---- TRANSACTIONS ----
+        // TRANSACTIONS
         if (txRes.status === "fulfilled") {
-          setTransactions(txRes.value.data || []);
-        } else {
-          console.warn("Transactions failed:", txRes.reason);
+          const data = txRes.value.data;
+          setTransactions(Array.isArray(data) ? data : []);
         }
 
-        // ---- NOTIFICATIONS ----
+        // NOTIFICATIONS
         if (notifRes.status === "fulfilled") {
           const data = notifRes.value.data;
           setNotifications(Array.isArray(data) ? data : []);
-        } else {
-          console.warn("Notifications failed:", notifRes.reason);
-          setNotifications([]); // prevent crash
         }
 
-        // ---- PROFILE PICTURE ----
-        if (profilePicRes.status === "fulfilled") {
-          const blob = profilePicRes.value.data;
-          setProfilePicUrl(URL.createObjectURL(blob));
-        } else {
-          console.warn("Profile picture failed:", profilePicRes.reason);
-        }
       } catch (err) {
-        console.error("Dashboard load error:", err);
+        console.error("Dashboard error:", err);
         setError("Failed to load dashboard.");
       } finally {
         setLoading(false);
       }
     }
 
-    loadDashboard();
+    load();
   }, [authLoading, isAuthenticated]);
 
-  // ---- LOADING / ERRORS ----
-  if (authLoading || loading) return <div>Loading dashboard…</div>;
+  if (loading) return <div>Loading dashboard...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
   return (
     <div style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}>
+
       {/* HEADER */}
-      <header style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <header style={{ display: "flex", gap: 16, alignItems: "center" }}>
         <img
           src={profilePicUrl || "/default-avatar.png"}
-          alt="Profile"
           style={{
             width: 70,
             height: 70,
@@ -120,16 +112,15 @@ export default function DashboardPage() {
             objectFit: "cover",
             background: "#ddd",
           }}
+          alt="Avatar"
         />
 
         <div>
-          <h1 style={{ margin: 0 }}>
-            Welcome, {profile?.username || user?.username}
-          </h1>
-          <div>{profile?.email || user?.email}</div>
+          <h1 style={{ margin: 0 }}>{profile?.username}</h1>
+          <div>{profile?.email}</div>
         </div>
 
-        <div style={{ marginLeft: "auto", fontSize: 20, fontWeight: "bold" }}>
+        <div style={{ marginLeft: "auto", fontSize: 20 }}>
           Balance: ₦{balance.toLocaleString()}
         </div>
       </header>
@@ -138,13 +129,12 @@ export default function DashboardPage() {
       <section style={{ marginTop: 30 }}>
         <h2>Transaction History</h2>
         {transactions.length === 0 ? (
-          <p>No transactions found.</p>
+          <p>No transactions yet.</p>
         ) : (
           <ul>
-            {transactions.map((tx) => (
-              <li key={tx.id || tx._id}>
-                {tx.type.toUpperCase()} — ₦{tx.amount.toLocaleString()} —{" "}
-                {tx.status} — {new Date(tx.createdAt).toLocaleString()}
+            {transactions.map((t) => (
+              <li key={t._id}>
+                {t.type.toUpperCase()} — ₦{t.amount} — {t.status}
               </li>
             ))}
           </ul>
@@ -154,15 +144,12 @@ export default function DashboardPage() {
       {/* NOTIFICATIONS */}
       <section style={{ marginTop: 30 }}>
         <h2>Notifications</h2>
-
         {notifications.length === 0 ? (
-          <p>No notifications.</p>
+          <p>No notifications</p>
         ) : (
           <ul>
             {notifications.map((n) => (
-              <li key={n._id || n.id}>
-                {n.title || "Notification"} — {n.message}
-              </li>
+              <li key={n._id}>{n.message}</li>
             ))}
           </ul>
         )}
