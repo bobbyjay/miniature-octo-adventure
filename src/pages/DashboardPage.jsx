@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const token = localStorage.getItem("token");
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -16,59 +15,62 @@ export default function Dashboard() {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    if (!token) {
-      navigate("/signin");
+    let mounted = true;
+
+    // Wait until AuthContext finishes loading
+    if (authLoading) return;
+
+    // If no user → redirect is already handled by AuthContext
+    if (!isAuthenticated) {
+      setLoading(false);
       return;
     }
 
-    async function loadDashboardData() {
+    async function loadDashboard() {
       try {
         setLoading(true);
+        setError("");
 
-        // parallel requests
         const [
           profileRes,
           betsRes,
           eventsRes,
           transactionsRes,
-          notificationsRes
+          notificationsRes,
         ] = await Promise.all([
           api.get("/users/profile-pictures"),
           api.get("/bets"),
           api.get("/events"),
           api.get("/account/transactions"),
-          api.get("/notifications")
+          api.get("/notifications"),
         ]);
+
+        if (!mounted) return;
 
         setProfilePic(profileRes.data?.url || null);
         setBets(betsRes.data || []);
         setEvents(eventsRes.data || []);
         setTransactions(transactionsRes.data || []);
         setNotifications(notificationsRes.data || []);
-
       } catch (err) {
         console.error("Dashboard load error:", err);
-
-        if (err.response?.status === 401) {
-          // token expired → logout user
-          localStorage.removeItem("token");
-          navigate("/signin");
-        }
-
         setError("Failed to load your dashboard.");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    loadDashboardData();
-  }, [token, navigate]);
+    loadDashboard();
 
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, isAuthenticated]);
 
   // -----------------------------
   // LOADING STATE
   // -----------------------------
-  if (loading) {
+  if (authLoading || loading) {
     return <div className="dashboard-loading">Loading your account...</div>;
   }
 
@@ -84,10 +86,11 @@ export default function Dashboard() {
   // -----------------------------
   return (
     <div className="dashboard">
-
       <section className="dashboard-header">
-        <h1>Your Dashboard</h1>
-        {profilePic && <img src={profilePic} alt="Profile" className="profile-pic" />}
+        <h1>Welcome, {user?.name}</h1>
+        {profilePic && (
+          <img src={profilePic} alt="Profile" className="profile-pic" />
+        )}
       </section>
 
       {/* NOTIFICATIONS */}
@@ -128,7 +131,9 @@ export default function Dashboard() {
         ) : (
           <ul>
             {events.map((e) => (
-              <li key={e.id}>{e.name} — {e.date}</li>
+              <li key={e.id}>
+                {e.name} — {e.date}
+              </li>
             ))}
           </ul>
         )}
@@ -149,7 +154,6 @@ export default function Dashboard() {
           </ul>
         )}
       </section>
-
     </div>
   );
 }
