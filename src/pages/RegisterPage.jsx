@@ -1,13 +1,12 @@
+// src/pages/RegisterPage.jsx
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    name: "",
+    username: "",
     email: "",
     password: "",
   });
@@ -15,108 +14,68 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const handleChange = (e) =>
+    setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
     setLoading(true);
 
     const res = await register(form);
-
     setLoading(false);
 
     if (!res.success) {
       setError(res.error);
-      return;
     }
-
-    // Redirect done inside AuthContext (navigate to /verify-email)
+    // success navigates inside AuthContext to /verify-email
   };
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>Create Account</h1>
-
+      <h1>Create Account</h1>
       {error && <p style={styles.error}>{error}</p>}
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <input
-          type="text"
-          name="name"
-          placeholder="Full Name"
-          value={form.name}
+          name="username"
+          value={form.username}
           onChange={handleChange}
-          style={styles.input}
+          placeholder="Username"
           required
+          style={styles.input}
         />
-
         <input
-          type="email"
           name="email"
-          placeholder="Email Address"
           value={form.email}
           onChange={handleChange}
-          style={styles.input}
+          placeholder="Email"
+          type="email"
           required
+          style={styles.input}
         />
-
         <input
-          type="password"
           name="password"
-          placeholder="Create Password"
           value={form.password}
           onChange={handleChange}
-          style={styles.input}
+          placeholder="Password"
+          type="password"
           required
+          style={styles.input}
         />
 
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? "Creating account..." : "Register"}
+        <button style={styles.button} disabled={loading}>
+          {loading ? "Creating..." : "Register"}
         </button>
       </form>
-
-      <p style={styles.loginText}>
-        Already have an account?{" "}
-        <span onClick={() => navigate("/login")} style={styles.link}>
-          Login
-        </span>
-      </p>
     </div>
   );
 }
 
 const styles = {
-  container: {
-    width: "100%",
-    maxWidth: "400px",
-    margin: "0 auto",
-    paddingTop: "60px",
-    textAlign: "center",
-  },
-  title: { fontSize: "28px", marginBottom: "20px" },
-  form: { display: "flex", flexDirection: "column", gap: "15px" },
-  input: {
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    fontSize: "16px",
-  },
-  button: {
-    padding: "12px",
-    borderRadius: "8px",
-    background: "#111",
-    color: "#fff",
-    fontSize: "17px",
-    cursor: "pointer",
-  },
-  error: { color: "red", marginBottom: "10px" },
-  loginText: { marginTop: "15px" },
-  link: { color: "#007bff", cursor: "pointer" },
+  container: { maxWidth: 420, margin: "40px auto", padding: 20, textAlign: "center" },
+  form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 12 },
+  input: { padding: 10, borderRadius: 8, border: "1px solid #ddd" },
+  button: { padding: 12, borderRadius: 8, background: "#111", color: "#fff", border: "none" },
+  error: { color: "red" },
 };
