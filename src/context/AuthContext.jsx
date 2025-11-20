@@ -16,7 +16,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const loadUser = async () => {
       const token = localStorage.getItem("token");
-      if (!token) return setLoading(false);
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
       try {
         const res = await api.getMe();
@@ -32,39 +36,31 @@ export function AuthProvider({ children }) {
     loadUser();
   }, []);
 
-  // ----------------------------
   // REGISTER
-  // ----------------------------
   const register = async (formData) => {
     try {
       await api.register(formData);
 
-      // Save email for verification step
       setPendingEmail(formData.email);
-
-      // Redirect to verification page
       navigate("/verify-email");
 
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Registration failed",
+        error: err.response?.data?.message || "Registration failed"
       };
     }
   };
 
-  // ----------------------------
   // VERIFY EMAIL
-  // ----------------------------
   const verifyEmail = async (code) => {
     try {
       const res = await api.verifyEmail({
         email: pendingEmail,
-        code: code,
+        code,
       });
 
-      // Backend returns token + user
       localStorage.setItem("token", res.data.token);
       setUser(res.data.user);
 
@@ -79,21 +75,20 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ----------------------------
   // LOGIN
-  // ----------------------------
   const login = async (formData) => {
     try {
       const res = await api.login(formData);
+
       localStorage.setItem("token", res.data.token);
       setUser(res.data.user);
-      navigate("/dashboard");
 
+      navigate("/dashboard");
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Login failed",
+        error: err.response?.data?.message || "Login failed"
       };
     }
   };
