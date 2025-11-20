@@ -54,20 +54,30 @@ const api = {
      🖼️ PROFILE PICTURE FETCH METHODS (Blob stream)
   --------------------------------------------------- */
 
-  // Authenticated user profile picture (GET /users/profile-picture)
+  // Authenticated user profile picture
   getAuthenticatedProfilePicture: () =>
     API.get("/users/profile-picture", { responseType: "blob" }),
 
-  // ANY user's profile picture (GET /users/:id/profile-picture)
+  // ANY user's profile picture
   getProfilePicture: (id) =>
     API.get(`/users/${id}/profile-picture`, { responseType: "blob" }),
 
-  // OLD plural route (still supported on backend)
+  // Old plural route
   getMyProfilePic: () => API.get("/users/profile-pictures"),
 
   // --- ACCOUNT ---
   getBalance: () => API.get("/account/balance"),
-  transactions: () => API.get("/account/transactions"),
+
+  /* ---------------------------------------------------
+     🟢 FIXED TRANSACTIONS ENDPOINT (prevents 304)
+  --------------------------------------------------- */
+  transactions: () =>
+    API.get("/account/transactions", {
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    }),
 
   // --- NOTIFICATIONS ---
   getNotifications: () => API.get("/notifications"),
