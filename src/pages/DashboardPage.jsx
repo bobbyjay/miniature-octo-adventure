@@ -6,7 +6,8 @@ import api from "../api";
 export default function DashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
 
-  const API_BASE = import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+  const API_BASE =
+    import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,7 +32,7 @@ export default function DashboardPage() {
       try {
         setLoading(true);
 
-        // 🔥 Make sure userId always exists
+        // 🟩 Ensure userId exists
         const userId = user?.id || localStorage.getItem("userId");
         if (!userId) {
           setError("User ID missing. Please login again.");
@@ -39,6 +40,7 @@ export default function DashboardPage() {
           return;
         }
 
+        // 🟩 Fetch all dashboard data together
         const [
           profileRes,
           picRes,
@@ -59,13 +61,15 @@ export default function DashboardPage() {
         if (profileRes.status === "fulfilled") {
           const p = profileRes.value.data?.data;
           setProfile(p || null);
-          localStorage.setItem("userId", p?.id); // ensure persistence
+
+          // Persist userId
+          if (p?.id) localStorage.setItem("userId", p.id);
         } else {
           console.warn("Profile failed:", profileRes.reason);
         }
 
         /* ---------------------------------------------------------
-           PROFILE PICTURE (must convert relative → absolute URL)
+           PROFILE PICTURE — convert URL to absolute
         --------------------------------------------------------- */
         if (picRes.status === "fulfilled") {
           const arr = picRes.value.data?.data;
@@ -73,9 +77,9 @@ export default function DashboardPage() {
           if (Array.isArray(arr) && arr.length > 0) {
             let streamUrl = arr[0].streamUrl || "";
 
-            // build full URL
+            // Convert relative → absolute URL
             if (streamUrl.startsWith("/")) {
-              streamUrl = API_BASE + streamUrl; // ➜ https://domain/api/users/id/profile-picture
+              streamUrl = API_BASE + streamUrl;
             } else {
               streamUrl = `${API_BASE}/${streamUrl}`;
             }
@@ -94,11 +98,22 @@ export default function DashboardPage() {
         }
 
         /* ---------------------------------------------------------
-           TRANSACTIONS
+           TRANSACTIONS — FIXED
+           Backend returns:
+           {
+             data: [ ...transactions ]
+           }
         --------------------------------------------------------- */
         if (txRes.status === "fulfilled") {
           const list = txRes.value.data?.data;
-          setTransactions(Array.isArray(list) ? list : []);
+
+          if (Array.isArray(list)) {
+            setTransactions(list);
+          } else {
+            setTransactions([]);
+          }
+        } else {
+          console.warn("Transactions failed:", txRes.reason);
         }
 
         /* ---------------------------------------------------------
@@ -106,6 +121,7 @@ export default function DashboardPage() {
         --------------------------------------------------------- */
         if (notifRes.status === "fulfilled") {
           const list = notifRes.value.data?.data;
+
           setNotifications(Array.isArray(list) ? list : []);
         }
 
@@ -128,10 +144,8 @@ export default function DashboardPage() {
 
   return (
     <div style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}>
-
       {/* HEADER */}
       <header style={{ display: "flex", gap: 16, alignItems: "center" }}>
-
         {/* PROFILE PICTURE */}
         <img
           src={profilePicUrl || "/default-avatar.png"}
@@ -153,7 +167,7 @@ export default function DashboardPage() {
 
         {/* BALANCE */}
         <div style={{ marginLeft: "auto", fontSize: 20 }}>
-          Balance: ${balance.toLocaleString()}
+          Balance: ₦{balance.toLocaleString()}
         </div>
       </header>
 
