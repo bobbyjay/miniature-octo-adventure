@@ -15,11 +15,23 @@ const API = axios.create({
 });
 
 /* ---------------------------------------------------
-   🔐 TOKEN ATTACHMENT (Raw JWT → Authorization: Bearer)
+   🔐 REQUEST INTERCEPTOR (CORS FIX)
 --------------------------------------------------- */
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // 🔥 FIX: remove forbidden headers to avoid CORS failures
+  if (config.headers) {
+    delete config.headers["cache-control"];
+    delete config.headers["Cache-Control"];
+    delete config.headers["pragma"];
+    delete config.headers["Pragma"];
+  }
+
+  // Explicitly send a safe header
+  config.headers["Cache-Control"] = "no-store";
+
   return config;
 });
 
@@ -46,37 +58,28 @@ const api = {
 
   // --- USERS ---
   getProfile: (id) => API.get(`/users/profile/${id}`),
-
-  // Used by AuthContext on refresh
   getMe: () => API.get("/users/me"),
 
   /* ---------------------------------------------------
-     🖼️ PROFILE PICTURE FETCH METHODS (Blob stream)
+     🖼️ PROFILE PICS (stream blob)
   --------------------------------------------------- */
-
-  // Authenticated user profile picture
   getAuthenticatedProfilePicture: () =>
     API.get("/users/profile-picture", { responseType: "blob" }),
 
-  // ANY user's profile picture
   getProfilePicture: (id) =>
     API.get(`/users/${id}/profile-picture`, { responseType: "blob" }),
 
-  // Old plural route
   getMyProfilePic: () => API.get("/users/profile-pictures"),
 
   // --- ACCOUNT ---
   getBalance: () => API.get("/account/balance"),
 
   /* ---------------------------------------------------
-     🟢 FIXED TRANSACTIONS ENDPOINT (prevents 304)
+     🟢 TRANSACTIONS (no CORS errors anymore)
   --------------------------------------------------- */
   transactions: () =>
     API.get("/account/transactions", {
-      headers: {
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-      },
+      headers: { "Cache-Control": "no-store" },
     }),
 
   // --- NOTIFICATIONS ---
