@@ -1,3 +1,4 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
@@ -9,47 +10,46 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [pendingEmail, setPendingEmail] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load user on refresh
+  // on mount, if token exists, validate with /users/me
   useEffect(() => {
-    const loadUser = async () => {
-      const token = localStorage.getItem("token");
+    let mounted = true;
 
+    async function load() {
+      const token = localStorage.getItem("token");
       if (!token) {
-        setLoading(false);
+        if (mounted) setLoading(false);
         return;
       }
 
       try {
-        const res = await api.getMe(); // FIXED ROUTE
-        setUser(res.data);
-      } catch {
+        // api.getMe() calls /users/me
+        const res = await api.getMe();
+        // spec says GET /api/users/me returns profile — we'll assume res.data contains user object
+        if (mounted) setUser(res.data);
+      } catch (err) {
+        console.warn("Failed to load user; clearing token");
         localStorage.removeItem("token");
-        setUser(null);
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
       }
+    }
 
-      setLoading(false);
+    load();
+    return () => {
+      mounted = false;
     };
-
-    loadUser();
   }, []);
 
-  /* -------------------------
-        REGISTER
-  --------------------------*/
-  const register = async (formData) => {
+  // register expects { username, email, password }
+  const register = async ({ username, email, password }) => {
     try {
-      await api.register({
-        username: formData.username,   // backend requires "username"
-        email: formData.email,
-        password: formData.password,
-      });
-
-      setPendingEmail(formData.email);
+      await api.register({ username, email, password });
+      setPendingEmail(email);
       navigate("/verify-email");
-
       return { success: true };
     } catch (err) {
       return {
@@ -59,51 +59,55 @@ export function AuthProvider({ children }) {
     }
   };
 
-  /* -------------------------
-        VERIFY EMAIL
-  --------------------------*/
+  // verify-email expects { email, code }
+  // backend unclear whether it returns token — handle both cases:
   const verifyEmail = async (code) => {
     try {
-      const res = await api.verifyEmail({
-        email: pendingEmail,
-        code,
-      });
+      const res = await api.verifyEmail({ email: pendingEmail, code });
 
-      localStorage.setItem("token", res.data.token);
+      // some backends return token/user here; spec didn't explicitly say but login returns token.
+      // handle both: if res.data.token exists, store and set user; otherwise navigate to login.
+      const payload = res.data || {};
 
-      setUser({
-        id: res.data.id,
-        username: res.data.username,
-        email: res.data.email,
-      });
-
-      navigate("/dashboard");
+      if (payload.token) {
+        // token might already include "Bearer " prefix
+        localStorage.setItem("token", payload.token);
+        setUser({
+          id: payload.id,
+          username: payload.username,
+          email: payload.email,
+        });
+        navigate("/dashboard");
+      } else {
+        // If verify endpoint doesn't return token, send user to login page
+        navigate("/login");
+      }
 
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Invalid verification code",
+        error: err.response?.data?.message || "Verification failed",
       };
     }
   };
 
-  /* -------------------------
-          LOGIN
-  --------------------------*/
-  const login = async (formData) => {
+  // login: backend returns { id, email, username, token }
+  const login = async ({ email, password }) => {
     try {
-      const res = await api.login({
-        email: formData.email,
-        password: formData.password,
-      });
+      const res = await api.login({ email, password });
+      const payload = res.data;
 
-      localStorage.setItem("token", res.data.token);
+      // backend returns token as "Bearer ..." per your spec — store exactly as provided
+      if (!payload?.token) {
+        throw new Error("No token in login response");
+      }
 
+      localStorage.setItem("token", payload.token);
       setUser({
-        id: res.data.id,
-        username: res.data.username,
-        email: res.data.email,
+        id: payload.id,
+        username: payload.username,
+        email: payload.email,
       });
 
       navigate("/dashboard");
@@ -111,14 +115,11 @@ export function AuthProvider({ children }) {
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Login failed",
+        error: err.response?.data?.message || err.message || "Login failed",
       };
     }
   };
 
-  /* -------------------------
-          LOGOUT
-  --------------------------*/
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -129,8 +130,8 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
-        loading,
         pendingEmail,
+        loading,
         login,
         register,
         verifyEmail,
