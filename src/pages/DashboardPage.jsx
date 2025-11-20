@@ -19,6 +19,9 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
+  /* --------------------------------------------------
+     DASHBOARD LOADING
+  -------------------------------------------------- */
   useEffect(() => {
     if (authLoading) return;
 
@@ -32,18 +35,17 @@ export default function DashboardPage() {
       try {
         setLoading(true);
 
-        const userId = user?.id || localStorage.getItem("userId");
+        const userId = user?.id;
         if (!userId) {
-          setError("User ID missing. Please login again.");
+          setError("Failed to load user data.");
           setLoading(false);
           return;
         }
 
-        // Fetch all dashboard data at once
-        const [profileRes, picRes, balanceRes, txRes, notifRes] =
+        const [profileRes, pictureRes, balanceRes, txRes, notifRes] =
           await Promise.allSettled([
             api.getProfile(userId),
-            api.getMyProfilePic(),
+            api.getAuthenticatedProfilePicture(), // 👈 NEW
             api.getBalance(),
             api.transactions(),
             api.getNotifications(),
@@ -53,25 +55,19 @@ export default function DashboardPage() {
            USER PROFILE
         --------------------------------------- */
         if (profileRes.status === "fulfilled") {
-          const p = profileRes.value.data?.data || null;
-          setProfile(p);
-          if (p?.id) localStorage.setItem("userId", p.id);
+          const data = profileRes.value.data?.data || null;
+          setProfile(data);
         }
 
         /* ---------------------------------------
-           PROFILE PICTURE (Fix absolute URL)
+           PROFILE PICTURE (stream blob → url)
         --------------------------------------- */
-        if (picRes.status === "fulfilled") {
-          const list = picRes.value.data?.data;
+        if (pictureRes.status === "fulfilled") {
+          const blob = pictureRes.value.data;
 
-          if (Array.isArray(list) && list.length > 0) {
-            let url = list[0].streamUrl;
-
-            // Ensure URL is absolute
-            if (url.startsWith("/")) url = API_BASE + url;
-
-            setProfilePicUrl(url);
-          }
+          // Convert blob → temporary URL
+          const imageUrl = URL.createObjectURL(blob);
+          setProfilePicUrl(imageUrl);
         }
 
         /* ---------------------------------------
@@ -82,12 +78,10 @@ export default function DashboardPage() {
         }
 
         /* ---------------------------------------
-           TRANSACTIONS (Corrected)
+           TRANSACTIONS
         --------------------------------------- */
         if (txRes.status === "fulfilled") {
           const data = txRes.value.data?.data;
-
-          // backend returns array → ensure always array
           setTransactions(Array.isArray(data) ? data : []);
         }
 
@@ -107,7 +101,7 @@ export default function DashboardPage() {
     }
 
     load();
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, user?.id]);
 
   /* ---------------------------------------
      UI
@@ -117,11 +111,8 @@ export default function DashboardPage() {
 
   return (
     <div style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}>
-
       {/* HEADER */}
       <header style={{ display: "flex", gap: 16, alignItems: "center" }}>
-
-        {/* PROFILE PICTURE */}
         <img
           src={profilePicUrl || "/default-avatar.png"}
           style={{
@@ -134,7 +125,6 @@ export default function DashboardPage() {
           alt="Avatar"
         />
 
-        {/* USER INFO */}
         <div>
           <h1 style={{ margin: 0 }}>{profile?.username}</h1>
           <div>{profile?.email}</div>
