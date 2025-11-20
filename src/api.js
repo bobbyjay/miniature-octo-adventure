@@ -2,7 +2,9 @@
 import axios from "axios";
 
 // Always ensure trailing /api is present
-let API_BASE = import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+let API_BASE =
+  import.meta.env.VITE_API_BASE || "https://clutchden.onrender.com/api";
+
 if (!API_BASE.endsWith("/api")) {
   API_BASE = API_BASE + "/api";
 }
@@ -17,9 +19,7 @@ const API = axios.create({
 --------------------------------------------------- */
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -35,7 +35,7 @@ API.interceptors.response.use(
 );
 
 /* ---------------------------------------------------
-   📌 API ROUTES (100% correct paths)
+   📌 API ROUTES
 --------------------------------------------------- */
 const api = {
   // --- AUTH ---
@@ -44,14 +44,26 @@ const api = {
   resendCode: (data) => API.post("/auth/resend-code", data),
   login: (data) => API.post("/auth/login", data),
 
-  // --- USER ---
+  // --- USERS ---
   getProfile: (id) => API.get(`/users/profile/${id}`),
 
   // Used by AuthContext on refresh
   getMe: () => API.get("/users/me"),
 
-  // Profile picture JSON metadata
-  getMyProfilePic: () => API.get("/users/profile-picture"),
+  /* ---------------------------------------------------
+     🖼️ PROFILE PICTURE FETCH METHODS (Blob stream)
+  --------------------------------------------------- */
+
+  // Authenticated user profile picture (GET /users/profile-picture)
+  getAuthenticatedProfilePicture: () =>
+    API.get("/users/profile-picture", { responseType: "blob" }),
+
+  // ANY user's profile picture (GET /users/:id/profile-picture)
+  getProfilePicture: (id) =>
+    API.get(`/users/${id}/profile-picture`, { responseType: "blob" }),
+
+  // OLD plural route (still supported on backend)
+  getMyProfilePic: () => API.get("/users/profile-pictures"),
 
   // --- ACCOUNT ---
   getBalance: () => API.get("/account/balance"),
