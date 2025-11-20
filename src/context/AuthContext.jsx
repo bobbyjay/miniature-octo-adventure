@@ -15,8 +15,8 @@ export function AuthProvider({ children }) {
 
   /* ---------------------------------------------------------
      🟢 LOAD USER ON REFRESH (Fixed)
-     - Does NOT delete token unless backend explicitly says 401
-     - Prevents dashboard reset
+     - Only clears token for true auth errors (401)
+     - Keeps token for 404, 500, timeout, etc.
   --------------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
@@ -33,12 +33,11 @@ export function AuthProvider({ children }) {
         const res = await api.getMe();
 
         if (mounted) {
-          setUser(res.data.data);
+          setUser(res.data?.data || null);
         }
       } catch (err) {
         const code = err.response?.status;
 
-        // ❗ ONLY clear token if truly unauthorized
         if (code === 401) {
           console.warn("⚠️ Token expired — clearing");
           localStorage.removeItem("token");
@@ -61,10 +60,8 @@ export function AuthProvider({ children }) {
   const register = async ({ username, email, password }) => {
     try {
       await api.register({ username, email, password });
-
       setPendingEmail(email);
       navigate("/verify-email");
-
       return { success: true };
     } catch (err) {
       return {
@@ -87,14 +84,13 @@ export function AuthProvider({ children }) {
       const data = res.data.data;
 
       if (data?.token) {
-        // store raw token
         localStorage.setItem("token", data.token);
 
         setUser({
           id: data.id,
           username: data.username,
           email: data.email,
-          profilePicture: data.profilePicture || null, // ⭐ FIXED
+          profilePicture: data.profilePicture || null,
         });
 
         navigate("/dashboard");
@@ -112,7 +108,7 @@ export function AuthProvider({ children }) {
   };
 
   /* ---------------------------------------------------------
-     LOGIN (Profile picture added)
+     LOGIN — now supports profile picture
   --------------------------------------------------------- */
   const login = async ({ email, password }) => {
     try {
@@ -129,7 +125,7 @@ export function AuthProvider({ children }) {
         id: data.id,
         email: data.email,
         username: data.username,
-        profilePicture: data.profilePicture || null, // ⭐ FIXED
+        profilePicture: data.profilePicture || null,
       });
 
       navigate("/dashboard");
