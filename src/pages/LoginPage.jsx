@@ -1,11 +1,10 @@
 // src/pages/LoginPage.jsx
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
 
@@ -13,11 +12,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    try {
-      await login(form);
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+    const res = await login(form); // AuthContext handles navigation
+
+    if (!res.success) {
+      setError(res.error);
     }
   };
 
