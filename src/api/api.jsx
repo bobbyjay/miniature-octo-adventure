@@ -1,89 +1,79 @@
-import axios from "axios";
+// src/api/index.js
+import axios from "./axios";
 
-const api = axios.create({
-  baseURL: "https://clutchden.onrender.com/api",
-  withCredentials: false,
-  timeout: 15000,
-});
+// AUTH
+const register = (payload) => axios.post("/auth/register", payload);
+const verifyEmail = (payload) => axios.post("/auth/verify-email", payload);
+const resendCode = (payload) => axios.post("/auth/resend-code", payload);
+const login = (payload) => axios.post("/auth/login", payload);
 
-// REQUEST INTERCEPTOR
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
+// USER
+const getMe = () => axios.get("/users/me");
+const updateProfile = (payload) => axios.put("/users/update-profile", payload);
+const updatePassword = (payload) => axios.put("/users/update-password", payload);
+const deleteAccount = (payload) =>
+  axios.delete("/users/delete-account", { data: payload });
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+// WALLET
+const deposit = (payload) => axios.post("/wallet/deposit", payload);
+const withdraw = (payload) => axios.post("/wallet/withdraw", payload);
+const getWalletHistory = () => axios.get("/wallet/history");
 
-    config.headers["Content-Type"] = "application/json";
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// NOTIFICATIONS
+const getNotifications = () => axios.get("/notifications");
+const markNotificationRead = (id) => axios.put(`/notifications/read/${id}`);
+const markAllNotificationsRead = () => axios.put("/notifications/read-all");
 
-// RESPONSE INTERCEPTOR
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status = error?.response?.status;
-
-    if (status === 401) {
-      localStorage.removeItem("token");
-    }
-
-    return Promise.reject(error);
-  }
-);
-
-/* -----------------------
-      AUTH ROUTES
-------------------------*/
-api.register = (data) => api.post("/auth/register", data);
-api.verifyEmail = (data) => api.post("/auth/verify-email", data);
-api.resendCode = (data) => api.post("/auth/resend-code", data);
-api.login = (data) => api.post("/auth/login", data);
-
-/* -----------------------
-      USER ROUTES
-------------------------*/
-api.getMe = () => api.get("/users/me");
-api.updateProfile = (data) => api.put("/users/update-profile", data);
-api.updatePassword = (data) => api.put("/users/update-password", data);
-api.deleteAccount = (data) => api.delete("/users/delete-account", { data });
-
-/* -----------------------
-      WALLET ROUTES
-------------------------*/
-api.deposit = (data) => api.post("/wallet/deposit", data);
-api.withdraw = (data) => api.post("/wallet/withdraw", data);
-api.getHistory = () => api.get("/wallet/history");
-
-/* -----------------------
-   NOTIFICATION ROUTES
-------------------------*/
-api.getNotifications = () => api.get("/notifications");
-api.markRead = (id) => api.put(`/notifications/read/${id}`);
-api.markAllRead = () => api.put("/notifications/read-all");
-
-/* -----------------------
-   UPLOAD ROUTES
-------------------------*/
-api.uploadProfilePicture = (formData) =>
-  api.post("/upload/profile-picture", formData, {
+// UPLOADS
+const uploadProfilePicture = (formData) =>
+  axios.post("/upload/profile-picture", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-/* -----------------------
-   ADMIN ROUTES
-------------------------*/
-api.getUsers = () => api.get("/admin/users");
-api.disableUser = (userId) => api.put(`/admin/disable/${userId}`);
-api.enableUser = (userId) => api.put(`/admin/enable/${userId}`);
-api.deleteUser = (userId) => api.delete(`/admin/delete/${userId}`);
+// ADMIN
+const getUsers = () => axios.get("/admin/users");
+const disableUser = (userId) => axios.put(`/admin/disable/${userId}`);
+const enableUser = (userId) => axios.put(`/admin/enable/${userId}`);
+const deleteUser = (userId) => axios.delete(`/admin/delete/${userId}`);
 
-/* -----------------------
-   SYSTEM ROUTES
-------------------------*/
-api.health = () => api.get("/health");
+// SYSTEM
+const health = () => axios.get("/health");
 
-export default api;
+export default {
+  // axios instance (for advanced use)
+  raw: axios,
+
+  // auth
+  register,
+  verifyEmail,
+  resendCode,
+  login,
+
+  // user
+  getMe,
+  updateProfile,
+  updatePassword,
+  deleteAccount,
+
+  // wallet
+  deposit,
+  withdraw,
+  getWalletHistory,
+
+  // notifications
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+
+  // upload
+  uploadProfilePicture,
+
+  // admin
+  getUsers,
+  disableUser,
+  enableUser,
+  deleteUser,
+
+  // system
+  health,
+};
