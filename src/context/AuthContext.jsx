@@ -27,8 +27,11 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const res = await api.getMe(); // backend returns { success, data }
-        if (mounted) setUser(res.data.data); // 🎯 FIXED
+        const res = await api.getMe();
+
+        if (mounted) {
+          setUser(res.data.data);
+        }
       } catch (err) {
         console.warn("❌ Failed to load user; clearing token");
         localStorage.removeItem("token");
@@ -71,11 +74,11 @@ export function AuthProvider({ children }) {
         code,
       });
 
-      // backend returns: { success, message, data: { id, email, username, token } }
       const payload = res.data.data;
 
       if (payload?.token) {
-        localStorage.setItem("token", payload.token);
+        // 🔥 FIXED — store token WITH Bearer prefix
+        localStorage.setItem("token", `Bearer ${payload.token}`);
 
         setUser({
           id: payload.id,
@@ -104,20 +107,14 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.login({ email, password });
 
-      // RESPONSE FORMAT:
-      // {
-      //   success: true,
-      //   message: "OK",
-      //   data: { id, email, username, token }
-      // }
-
-      const payload = res.data.data; // 🎯 FIXED path
+      const payload = res.data.data;
 
       if (!payload?.token) {
         throw new Error("No token returned by backend.");
       }
 
-      localStorage.setItem("token", payload.token);
+      // 🔥 FIXED — stored token now always has Bearer prefix
+      localStorage.setItem("token", `Bearer ${payload.token}`);
 
       setUser({
         id: payload.id,
