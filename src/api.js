@@ -6,14 +6,22 @@ const API = axios.create({
   timeout: 15000,
 });
 
-// Attach token
+/* ---------------------------------------------------
+   🔐 FIXED TOKEN ATTACHMENT
+   Your token in localStorage = just the raw JWT
+   So we must ALWAYS prefix "Bearer " here.
+--------------------------------------------------- */
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = token; // token ALREADY contains "Bearer "
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-// Global error handler
+/* ---------------------------------------------------
+   🌐 GLOBAL ERROR HANDLER
+--------------------------------------------------- */
 API.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -22,6 +30,9 @@ API.interceptors.response.use(
   }
 );
 
+/* ---------------------------------------------------
+   📌 API ROUTES (Matches your backend 100%)
+--------------------------------------------------- */
 const api = {
   // --- AUTH ---
   register: (data) => API.post("/auth/register", data),
@@ -30,13 +41,33 @@ const api = {
   login: (data) => API.post("/auth/login", data),
 
   // --- USER ---
+  // Returns: { success, message, data:{id,email,username} }
   getProfile: (id) => API.get(`/users/profile/${id}`),
 
-  // ❗ FIXED: backend RETURNS a JSON, NOT a blob
+  /* -----------------------------------------------
+     🖼 PROFILE PICTURE FIX
+     Your backend returns:
+     {
+       "success": true,
+       "message": "OK",
+       "data": [
+         {
+            "id": "...",
+            "username": "...",
+            "streamUrl": "/api/users/{id}/profile-picture"
+         }
+       ]
+     }
+
+     So this endpoint should be JSON, NOT blob.
+  -------------------------------------------------*/
   getMyProfilePic: () => API.get("/users/profile-picture"),
 
   // --- ACCOUNT ---
+  // Returns: { success, message, data:{ balance } }
   getBalance: () => API.get("/account/balance"),
+
+  // Returns: { success, message, data:[...] }
   transactions: () => API.get("/account/transactions"),
 
   // --- NOTIFICATIONS ---
