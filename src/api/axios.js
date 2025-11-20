@@ -1,45 +1,47 @@
+// src/api/axios.js
 import axios from "axios";
 
-const api = axios.create({
+const axiosInstance = axios.create({
   baseURL: "https://clutchden.onrender.com/api",
-  withCredentials: false,
   timeout: 15000,
+  withCredentials: false,
 });
 
-// REQUEST INTERCEPTOR
-api.interceptors.request.use(
+// attach token: handle tokens that already include "Bearer "
+axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token"); // store EXACT token returned by backend
 
     if (token) {
-      console.log("🔐 Sending token:", token);
-      config.headers.Authorization = `Bearer ${token}`;
+      const headerValue = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+      config.headers.Authorization = headerValue;
+      console.log("🔐 Attached Authorization:", headerValue);
     } else {
-      console.warn("⚠ No token found.");
+      console.warn("⚠ No token in localStorage");
     }
 
-    config.headers["Content-Type"] = "application/json";
+    // Only set JSON for non-multipart requests
+    if (!config.headers["Content-Type"]) {
+      config.headers["Content-Type"] = "application/json";
+    }
+
     return config;
   },
-  (error) => Promise.reject(error)
+  (err) => Promise.reject(err)
 );
 
-// RESPONSE INTERCEPTOR
-api.interceptors.response.use(
-  (response) => response,
-
-  async (error) => {
-    const status = error?.response?.status;
-
+// global response handling
+axiosInstance.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const status = err?.response?.status;
     if (status === 401) {
-      console.warn("❌ 401 Unauthorized — clearing token.");
+      console.warn("❌ 401 Unauthorized — clearing token from localStorage");
       localStorage.removeItem("token");
     }
-
-    console.error("API Error:", error.response?.data || error.message);
-
-    return Promise.reject(error);
+    console.error("API Error:", err.response?.data || err.message);
+    return Promise.reject(err);
   }
 );
 
-export default api;
+export default axiosInstance;
