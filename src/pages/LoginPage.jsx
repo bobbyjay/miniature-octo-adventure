@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import api from "../utils/api"; // <-- IMPORTANT (you were not calling api.login)
+import api from "../api"; // <-- IMPORTANT (you were not calling api.login)
 
 export default function LoginPage() {
   const navigate = useNavigate();
