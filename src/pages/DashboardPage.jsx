@@ -142,7 +142,7 @@ export default function DashboardPage() {
 
         {/* BALANCE */}
         <div style={{ marginLeft: "auto", fontSize: 20 }}>
-          Balance: ₦{balance.toLocaleString()}
+          Balance: ${balance.toLocaleString()}
         </div>
       </header>
 
