@@ -45,7 +45,7 @@ export default function DashboardPage() {
         const [profileRes, pictureRes, balanceRes, txRes, notifRes] =
           await Promise.allSettled([
             api.getProfile(userId),
-            api.getAuthenticatedProfilePicture(), // 👈 NEW
+            api.getAuthenticatedProfilePicture(),
             api.getBalance(),
             api.transactions(),
             api.getNotifications(),
@@ -64,8 +64,6 @@ export default function DashboardPage() {
         --------------------------------------- */
         if (pictureRes.status === "fulfilled") {
           const blob = pictureRes.value.data;
-
-          // Convert blob → temporary URL
           const imageUrl = URL.createObjectURL(blob);
           setProfilePicUrl(imageUrl);
         }
@@ -78,11 +76,20 @@ export default function DashboardPage() {
         }
 
         /* ---------------------------------------
-           TRANSACTIONS
+           TRANSACTIONS (Guaranteed to always be an array)
         --------------------------------------- */
         if (txRes.status === "fulfilled") {
-          const data = txRes.value.data?.data;
-          setTransactions(Array.isArray(data) ? data : []);
+          let tx = txRes.value?.data?.data;
+
+          if (!Array.isArray(tx)) {
+            console.warn("⚠ Backend returned invalid transactions:", tx);
+            tx = [];
+          }
+
+          setTransactions(tx);
+        } else {
+          console.warn("⚠ Transactions request failed:", txRes.reason);
+          setTransactions([]); // fallback
         }
 
         /* ---------------------------------------
@@ -132,7 +139,7 @@ export default function DashboardPage() {
 
         {/* BALANCE */}
         <div style={{ marginLeft: "auto", fontSize: 20 }}>
-          Balance: ${balance.toLocaleString()}
+          Balance: ₦{balance.toLocaleString()}
         </div>
       </header>
 
