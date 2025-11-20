@@ -14,7 +14,6 @@ export default function DashboardPage() {
 
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
-
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -54,34 +53,37 @@ export default function DashboardPage() {
 
         // PROFILE
         if (profileRes.status === "fulfilled") {
-          setProfile(profileRes.value.data);
+          setProfile(profileRes.value.data.data || null);
         } else {
           console.warn("Profile failed:", profileRes.reason);
         }
 
-        // PROFILE PICTURE (blob)
+        // PROFILE PICTURE (using streamUrl — NOT blob)
         if (picRes.status === "fulfilled") {
-          const blobUrl = URL.createObjectURL(picRes.value.data);
-          setProfilePicUrl(blobUrl);
+          const arr = picRes.value.data.data;
+          if (Array.isArray(arr) && arr.length > 0) {
+            const url = arr[0].streamUrl;
+            setProfilePicUrl(url.startsWith("/") ? url : `/${url}`);
+          }
         } else {
           console.warn("Profile picture failed:", picRes.reason);
         }
 
         // BALANCE
         if (balanceRes.status === "fulfilled") {
-          setBalance(balanceRes.value.data.balance || 0);
+          setBalance(balanceRes.value.data.data?.balance || 0);
         }
 
         // TRANSACTIONS
         if (txRes.status === "fulfilled") {
-          const data = txRes.value.data;
-          setTransactions(Array.isArray(data) ? data : []);
+          const list = txRes.value.data.data;
+          setTransactions(Array.isArray(list) ? list : []);
         }
 
         // NOTIFICATIONS
         if (notifRes.status === "fulfilled") {
-          const data = notifRes.value.data;
-          setNotifications(Array.isArray(data) ? data : []);
+          const list = notifRes.value.data.data;
+          setNotifications(Array.isArray(list) ? list : []);
         }
 
       } catch (err) {
@@ -134,7 +136,7 @@ export default function DashboardPage() {
           <ul>
             {transactions.map((t) => (
               <li key={t._id}>
-                {t.type.toUpperCase()} — ₦{t.amount} — {t.status}
+                {t.type?.toUpperCase()} — ₦{t.amount} — {t.status}
               </li>
             ))}
           </ul>
