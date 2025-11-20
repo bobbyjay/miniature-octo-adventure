@@ -3,20 +3,22 @@ import axios from "axios";
 const api = axios.create({
   baseURL: "https://clutchden.onrender.com/api",
   withCredentials: false,
-  timeout: 15000, // prevents hanging forever
+  timeout: 15000,
 });
 
-// REQUEST INTERCEPTOR (adds Bearer token)
+// REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
 
     if (token) {
+      console.log("🔐 Sending token:", token);
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn("⚠ No token found.");
     }
 
     config.headers["Content-Type"] = "application/json";
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -27,25 +29,15 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
-    const originalRequest = error.config;
-
     const status = error?.response?.status;
 
-    // --- HANDLE 401 UNAUTHORIZED ---
     if (status === 401) {
-      console.warn("Unauthorized: clearing session.");
-
-      // Remove token
+      console.warn("❌ 401 Unauthorized — clearing token.");
       localStorage.removeItem("token");
-
-      // Optional: redirect to login (uncomment if needed)
-      // window.location.href = "/signin";
     }
 
-    // Log the error for debug
     console.error("API Error:", error.response?.data || error.message);
 
-    // Reject the error properly
     return Promise.reject(error);
   }
 );
