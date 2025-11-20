@@ -10,66 +10,89 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   const [profile, setProfile] = useState(null);
+  const [profilePicUrl, setProfilePicUrl] = useState(null);
+
   const [balance, setBalance] = useState(0);
-  const [walletHistory, setWalletHistory] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (authLoading) return;
+
     if (!isAuthenticated) {
+      setError("You must be logged in to view this page.");
       setLoading(false);
-      setError("You must be logged in to view the dashboard.");
       return;
     }
 
     async function loadDashboard() {
       try {
         setLoading(true);
+        setError("");
 
-        // Load everything in parallel
-        const [me, wallet, notifs] = await Promise.allSettled([
-          api.getMe(), // returns user profile
-          api.walletHistory(), // returns list of transactions
-          api.getNotifications(), // returns list of notifications
+        const userId = localStorage.getItem("userId") || user?.id;
+
+        if (!userId) {
+          setError("No user ID found. Please login again.");
+          setLoading(false);
+          return;
+        }
+
+        // ---- PARALLEL REQUESTS ----
+        const [
+          profileRes,
+          balanceRes,
+          txRes,
+          notifRes,
+          profilePicRes,
+        ] = await Promise.allSettled([
+          api.getMe(), // /users/profile/:id
+          api.getBalance(), // /account/balance
+          api.transactions(), // /account/transactions
+          api.getNotifications(), // safe fallback included
+          api.getMyProfilePic(), // /users/profile-picture
         ]);
 
-        // --------------------------
-        // Profile
-        // --------------------------
-        if (me.status === "fulfilled") {
-          setProfile(me.value.data);
+        // ---- PROFILE ----
+        if (profileRes.status === "fulfilled") {
+          setProfile(profileRes.value.data);
         } else {
-          console.warn("Profile load failed:", me.reason);
+          console.warn("Profile load failed:", profileRes.reason);
         }
 
-        // --------------------------
-        // Wallet + Balance
-        // --------------------------
-        if (wallet.status === "fulfilled") {
-          const history = wallet.value.data || [];
-          setWalletHistory(history);
-
-          const total = history.reduce((sum, tx) => {
-            if (tx.type === "deposit") return sum + tx.amount;
-            if (tx.type === "withdraw") return sum - tx.amount;
-            return sum;
-          }, 0);
-
-          setBalance(total);
+        // ---- BALANCE ----
+        if (balanceRes.status === "fulfilled") {
+          setBalance(balanceRes.value.data.balance || 0);
         } else {
-          console.warn("Wallet load failed:", wallet.reason);
+          console.warn("Balance failed:", balanceRes.reason);
         }
 
-        // --------------------------
-        // Notifications
-        // --------------------------
-        if (notifs.status === "fulfilled") {
-          setNotifications(notifs.value.data || []);
+        // ---- TRANSACTIONS ----
+        if (txRes.status === "fulfilled") {
+          setTransactions(txRes.value.data || []);
         } else {
-          console.warn("Notifications load failed:", notifs.reason);
+          console.warn("Transactions failed:", txRes.reason);
         }
-      } catch (e) {
-        console.error("Dashboard load failed:", e);
+
+        // ---- NOTIFICATIONS ----
+        if (notifRes.status === "fulfilled") {
+          const data = notifRes.value.data;
+          setNotifications(Array.isArray(data) ? data : []);
+        } else {
+          console.warn("Notifications failed:", notifRes.reason);
+          setNotifications([]); // prevent crash
+        }
+
+        // ---- PROFILE PICTURE ----
+        if (profilePicRes.status === "fulfilled") {
+          const blob = profilePicRes.value.data;
+          setProfilePicUrl(URL.createObjectURL(blob));
+        } else {
+          console.warn("Profile picture failed:", profilePicRes.reason);
+        }
+      } catch (err) {
+        console.error("Dashboard load error:", err);
         setError("Failed to load dashboard.");
       } finally {
         setLoading(false);
@@ -79,71 +102,66 @@ export default function DashboardPage() {
     loadDashboard();
   }, [authLoading, isAuthenticated]);
 
-  if (authLoading || loading) return <div>Loading dashboard...</div>;
+  // ---- LOADING / ERRORS ----
+  if (authLoading || loading) return <div>Loading dashboard…</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
   return (
-    <div style={{ maxWidth: 900, margin: "24px auto", padding: 20 }}>
-      {/* ---------------------- */}
-      {/* USER PROFILE HEADER   */}
-      {/* ---------------------- */}
-      <header style={{ display: "flex", alignItems: "center", gap: 20 }}>
+    <div style={{ maxWidth: 1000, margin: "24px auto", padding: 16 }}>
+      {/* HEADER */}
+      <header style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <img
-          src={profile?.profilePicture || "/default-avatar.png"}
+          src={profilePicUrl || "/default-avatar.png"}
           alt="Profile"
           style={{
-            width: 80,
-            height: 80,
+            width: 70,
+            height: 70,
             borderRadius: "50%",
             objectFit: "cover",
-            border: "2px solid #ddd",
+            background: "#ddd",
           }}
         />
 
         <div>
-          <h2 style={{ margin: 0 }}>{profile?.username}</h2>
-          <div>{profile?.email}</div>
-          <div style={{ marginTop: 5, fontWeight: "bold" }}>
-            Balance: ₦{balance.toLocaleString()}
-          </div>
+          <h1 style={{ margin: 0 }}>
+            Welcome, {profile?.username || user?.username}
+          </h1>
+          <div>{profile?.email || user?.email}</div>
+        </div>
+
+        <div style={{ marginLeft: "auto", fontSize: 20, fontWeight: "bold" }}>
+          Balance: ₦{balance.toLocaleString()}
         </div>
       </header>
 
-      {/* ---------------------- */}
-      {/* WALLET HISTORY         */}
-      {/* ---------------------- */}
+      {/* TRANSACTIONS */}
       <section style={{ marginTop: 30 }}>
-        <h3>Wallet History</h3>
-
-        {walletHistory.length === 0 ? (
-          <p>No transactions yet.</p>
+        <h2>Transaction History</h2>
+        {transactions.length === 0 ? (
+          <p>No transactions found.</p>
         ) : (
           <ul>
-            {walletHistory.map((tx) => (
-              <li key={tx._id || Math.random()}>
-                <b>{tx.type.toUpperCase()}</b> — ₦{tx.amount.toLocaleString()}  
-                <span style={{ marginLeft: 8, opacity: 0.6 }}>
-                  {new Date(tx.createdAt).toLocaleString()}
-                </span>
+            {transactions.map((tx) => (
+              <li key={tx.id || tx._id}>
+                {tx.type.toUpperCase()} — ₦{tx.amount.toLocaleString()} —{" "}
+                {tx.status} — {new Date(tx.createdAt).toLocaleString()}
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      {/* ---------------------- */}
-      {/* NOTIFICATIONS          */}
-      {/* ---------------------- */}
+      {/* NOTIFICATIONS */}
       <section style={{ marginTop: 30 }}>
-        <h3>Notifications</h3>
+        <h2>Notifications</h2>
 
         {notifications.length === 0 ? (
           <p>No notifications.</p>
         ) : (
           <ul>
             {notifications.map((n) => (
-              <li key={n._id} style={{ opacity: n.read ? 0.6 : 1 }}>
-                {n.message}
+              <li key={n._id || n.id}>
+                {n.title || "Notification"} — {n.message}
               </li>
             ))}
           </ul>
