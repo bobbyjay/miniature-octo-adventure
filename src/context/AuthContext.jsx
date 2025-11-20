@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // ---------------------------------------------------------
-  // LOAD USER ON REFRESH (/api/users/me)
+  // LOAD USER ON PAGE REFRESH
   // ---------------------------------------------------------
   useEffect(() => {
     let mounted = true;
@@ -27,11 +27,8 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const res = await api.getMe();
-
-        if (mounted) {
-          setUser(res.data.data);
-        }
+        const res = await api.getProfile("me"); // 🔥 FIXED — use correct API endpoint
+        if (mounted) setUser(res.data.data);
       } catch (err) {
         console.warn("❌ Failed to load user; clearing token");
         localStorage.removeItem("token");
@@ -77,7 +74,7 @@ export function AuthProvider({ children }) {
       const payload = res.data.data;
 
       if (payload?.token) {
-        // 🔥 FIXED — store token WITH Bearer prefix
+        // Store token with Bearer
         localStorage.setItem("token", `Bearer ${payload.token}`);
 
         setUser({
@@ -101,27 +98,28 @@ export function AuthProvider({ children }) {
   };
 
   // ---------------------------------------------------------
-  // LOGIN USER
+  // LOGIN
   // ---------------------------------------------------------
   const login = async ({ email, password }) => {
     try {
       const res = await api.login({ email, password });
-
       const payload = res.data.data;
 
       if (!payload?.token) {
-        throw new Error("No token returned by backend.");
+        throw new Error("No token returned by server.");
       }
 
-      // 🔥 FIXED — stored token now always has Bearer prefix
+      // Store token
       localStorage.setItem("token", `Bearer ${payload.token}`);
 
+      // Store user info
       setUser({
         id: payload.id,
         email: payload.email,
         username: payload.username,
       });
 
+      // Redirect
       navigate("/dashboard");
 
       return { success: true };
