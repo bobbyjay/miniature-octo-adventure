@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // <-- use AuthContext login()
+  const { login } = useAuth(); // Use AuthContext login()
 
   const [form, setForm] = useState({
     email: "",
@@ -26,16 +26,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    // 🔥 Use AuthContext login()
-    const res = await login(form);
+    // 🔥 AuthContext login() — this calls api.login inside AuthContext
+    const result = await login(form);
 
-    if (!res.success) {
-      setError(res.error || "Invalid email or password");
-      setLoading(false);
+    setLoading(false);
+
+    if (!result.success) {
+      setError(result.error || "Invalid email or password");
       return;
     }
 
-    setLoading(false);
     navigate("/dashboard");
   };
 
