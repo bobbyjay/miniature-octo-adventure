@@ -1,12 +1,12 @@
+// src/pages/RegisterPage.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function LoginPage() {
-  const navigate = useNavigate();
-  const { login } = useAuth(); // Use AuthContext login()
+export default function RegisterPage() {
+  const { register } = useAuth();
 
   const [form, setForm] = useState({
+    username: "",
     email: "",
     password: "",
   });
@@ -15,117 +15,113 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // prevent double clicks
+    if (loading) return;
+
     setLoading(true);
 
-    // 🔥 AuthContext login() — this calls api.login inside AuthContext
-    const result = await login(form);
+    try {
+      const res = await register(form);
 
-    setLoading(false);
-
-    if (!result.success) {
-      setError(result.error || "Invalid email or password");
-      return;
+      if (!res.success) {
+        setError(res.error || "Registration failed.");
+      }
+      // success redirect handled in AuthContext
+    } catch (err) {
+      console.error("Register Error:", err);
+      setError("Something went wrong. Please try again.");
     }
 
-    navigate("/dashboard");
+    setLoading(false);
   };
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>Welcome Back</h1>
+      <h1>Create Account</h1>
 
       {error && <p style={styles.error}>{error}</p>}
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <input
-          type="email"
-          name="email"
-          placeholder="Email Address"
-          value={form.email}
+          name="username"
+          value={form.username}
           onChange={handleChange}
-          style={styles.input}
+          placeholder="Username"
           required
+          autoComplete="username"
+          style={styles.input}
         />
 
         <input
-          type="password"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+          placeholder="Email"
+          type="email"
+          required
+          autoComplete="email"
+          style={styles.input}
+        />
+
+        <input
           name="password"
-          placeholder="Password"
           value={form.password}
           onChange={handleChange}
-          style={styles.input}
+          placeholder="Password"
+          type="password"
           required
+          autoComplete="new-password"
+          style={styles.input}
         />
 
         <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? "Signing in..." : "Login"}
+          {loading ? "Creating Account..." : "Register"}
         </button>
       </form>
-
-      <p style={styles.text}>
-        Don’t have an account?{" "}
-        <span style={styles.link} onClick={() => navigate("/signup")}>
-          Sign Up
-        </span>
-      </p>
     </div>
   );
 }
 
 const styles = {
   container: {
-    width: "100%",
-    maxWidth: "400px",
-    margin: "0 auto",
-    paddingTop: "60px",
+    maxWidth: 420,
+    margin: "40px auto",
+    padding: 20,
     textAlign: "center",
-  },
-  title: {
-    fontSize: "30px",
-    marginBottom: "20px",
-    fontWeight: "600",
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "15px",
-    marginTop: "10px",
+    gap: 12,
+    marginTop: 12,
   },
   input: {
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    fontSize: "16px",
+    padding: 10,
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    fontSize: 15,
   },
   button: {
-    padding: "12px",
-    borderRadius: "8px",
+    padding: 12,
+    borderRadius: 8,
     background: "#111",
     color: "#fff",
-    fontSize: "17px",
-    cursor: "pointer",
     border: "none",
-  },
-  text: {
-    marginTop: "15px",
-    fontSize: "14px",
-  },
-  link: {
-    color: "#007bff",
     cursor: "pointer",
-    marginLeft: "5px",
+    fontSize: 16,
   },
   error: {
     color: "red",
-    marginBottom: "10px",
+    marginBottom: 10,
   },
 };
