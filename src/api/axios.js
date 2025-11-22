@@ -7,20 +7,22 @@ const axiosInstance = axios.create({
   withCredentials: false,
 });
 
-// attach token: handle tokens that already include "Bearer "
+// attach token safely
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token"); // store EXACT token returned by backend
+    const token = localStorage.getItem("token");
 
     if (token) {
-      const headerValue = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+      const headerValue = token.startsWith("Bearer ") 
+        ? token 
+        : `Bearer ${token}`;
+
       config.headers.Authorization = headerValue;
+
       console.log("🔐 Attached Authorization:", headerValue);
-    } else {
-      console.warn("⚠ No token in localStorage");
     }
 
-    // Only set JSON for non-multipart requests
+    // default JSON header only when not uploading files
     if (!config.headers["Content-Type"]) {
       config.headers["Content-Type"] = "application/json";
     }
@@ -30,16 +32,18 @@ axiosInstance.interceptors.request.use(
   (err) => Promise.reject(err)
 );
 
-// global response handling
+// global error handler
 axiosInstance.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err?.response?.status;
+
     if (status === 401) {
-      console.warn("❌ 401 Unauthorized — clearing token from localStorage");
+      console.warn("❌ 401 Unauthorized — removing token");
       localStorage.removeItem("token");
     }
-    console.error("API Error:", err.response?.data || err.message);
+
+    console.error("API ERROR:", err.response?.data || err.message);
     return Promise.reject(err);
   }
 );
