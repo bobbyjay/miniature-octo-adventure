@@ -1,6 +1,16 @@
 // src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
-import api from "../api";
+import { 
+  registerUser,
+  loginUser,
+  getProfile 
+} from "../api/auth";
+
+import { 
+  getMe,
+  getProfilePicture 
+} from "../api/users";
+
 import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext();
@@ -14,28 +24,28 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* ---------------------------------------------------------
-     🔵 Helper: Load profile picture blob → URL
+     🔵 Load profile picture BLOB → URL
   --------------------------------------------------------- */
   const loadProfilePicture = async (userId) => {
     try {
       if (!userId) return;
 
-      const res = await api.getProfilePicture(userId, { responseType: "blob" });
+      const res = await getProfilePicture(userId, {
+        responseType: "blob",
+      });
 
       const imageUrl = URL.createObjectURL(res.data);
 
       setUser((prev) =>
-        prev
-          ? { ...prev, profilePictureUrl: imageUrl }
-          : prev
+        prev ? { ...prev, profilePictureUrl: imageUrl } : prev
       );
     } catch (err) {
-      console.warn("Profile picture not found or failed to load");
+      console.warn("Profile picture missing or failed to load");
     }
   };
 
   /* ---------------------------------------------------------
-     🟢 LOAD USER ON REFRESH
+     🟢 Load logged-in user on refresh
   --------------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
@@ -49,26 +59,21 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const res = await api.getMe();
+        const res = await getMe();
+        const freshUser = res.data?.data || null;
 
         if (mounted) {
-          const freshUser = res.data?.data || null;
           setUser(freshUser);
 
-          // ⬅️ Load profile picture automatically
           if (freshUser?._id || freshUser?.id) {
             await loadProfilePicture(freshUser._id || freshUser.id);
           }
         }
       } catch (err) {
-        const code = err.response?.status;
-
-        if (code === 401) {
+        if (err.response?.status === 401) {
           console.warn("⚠️ Token expired — clearing");
           localStorage.removeItem("token");
           if (mounted) setUser(null);
-        } else {
-          console.warn("⚠️ Non-auth error but keeping token:", code);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -84,14 +89,16 @@ export function AuthProvider({ children }) {
   --------------------------------------------------------- */
   const register = async ({ username, email, password }) => {
     try {
-      await api.register({ username, email, password });
+      await registerUser({ username, email, password });
+
       setPendingEmail(email);
       navigate("/verify-email");
+
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || "Registration failed",
+        error: err.message || err.response?.data?.message || "Registration failed",
       };
     }
   };
@@ -120,7 +127,6 @@ export function AuthProvider({ children }) {
 
         setUser(newUser);
 
-        // Load image after verifying
         await loadProfilePicture(data.id);
 
         navigate("/dashboard");
@@ -138,16 +144,14 @@ export function AuthProvider({ children }) {
   };
 
   /* ---------------------------------------------------------
-     LOGIN — now loads profile picture
+     LOGIN
   --------------------------------------------------------- */
   const login = async ({ email, password }) => {
     try {
-      const res = await api.login({ email, password });
-      const data = res.data.data;
+      const res = await loginUser(email, password);
+      const data = res.data;
 
-      if (!data?.token) {
-        throw new Error("No token returned by backend.");
-      }
+      if (!data?.token) throw new Error("No token returned by backend");
 
       localStorage.setItem("token", data.token);
 
@@ -160,18 +164,15 @@ export function AuthProvider({ children }) {
 
       setUser(loggedInUser);
 
-      // ⬅️ Load profile picture immediately after login
       await loadProfilePicture(data.id);
 
       navigate("/dashboard");
+
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        error:
-          err.response?.data?.message ||
-          err.message ||
-          "Login failed",
+        error: err.message || "Login failed",
       };
     }
   };
