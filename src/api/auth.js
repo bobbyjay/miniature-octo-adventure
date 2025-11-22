@@ -1,36 +1,29 @@
 import api from "./axios";
 
-/**
- * Save token to browser storage
- */
+/** Save token */
 const saveToken = (token) => {
   localStorage.setItem("token", token);
 };
 
-/**
- * Read token
- */
+/** Read token */
 export const getToken = () => {
   return localStorage.getItem("token");
 };
 
-/**
- * Remove token on logout
- */
+/** Logout */
 export const logoutUser = () => {
   localStorage.removeItem("token");
 };
 
-
-/**
- * LOGIN — returns token & stores it
- */
+/* ---------------------------------------------------------
+   LOGIN
+--------------------------------------------------------- */
 export const loginUser = async (email, password) => {
   try {
     const res = await api.post("/auth/login", { email, password });
 
     if (res.data?.token) {
-      saveToken(res.data.token); // store the token
+      saveToken(res.data.token);
     }
 
     return res.data;
@@ -39,23 +32,26 @@ export const loginUser = async (email, password) => {
   }
 };
 
-
-/**
- * REGISTER
- */
-export const registerUser = async (email, password, name) => {
+/* ---------------------------------------------------------
+   REGISTER — FIXED: send { username, email, password }
+--------------------------------------------------------- */
+export const registerUser = async ({ username, email, password }) => {
   try {
-    const res = await api.post("/auth/register", { email, password, name });
+    const res = await api.post("/auth/register", {
+      username,
+      email,
+      password,
+    });
+
     return res.data;
   } catch (err) {
     throw err.response?.data || { message: "Registration failed" };
   }
 };
 
-
-/**
- * GET PROFILE — requires token
- */
+/* ---------------------------------------------------------
+   GET PROFILE
+--------------------------------------------------------- */
 export const getProfile = async () => {
   try {
     const res = await api.get("/auth/profile", {
@@ -66,7 +62,6 @@ export const getProfile = async () => {
 
     return res.data;
   } catch (err) {
-    // auto logout if token is invalid/expired
     if (err.response?.status === 401) {
       logoutUser();
     }
